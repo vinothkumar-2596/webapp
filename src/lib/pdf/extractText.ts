@@ -3,6 +3,11 @@ import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { getPdfWorker } from './worker';
 import { runsToLines, type PageText } from './lines';
 import { PdfError, toPdfError } from './errors';
+import { installReadableStreamAsyncIterator } from './streamsPolyfill';
+
+// Must run before any pdf.js call: getTextContent async-iterates a
+// ReadableStream, unsupported before Safari 17.4 / Chrome 124.
+installReadableStreamAsyncIterator();
 
 export { runsToLines } from './lines';
 export type { Run, PageText } from './lines';

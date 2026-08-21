@@ -1,6 +1,7 @@
 import { extractPdfText, type ProgressFn } from './extractText';
 import { parseSlip } from './parseSlip';
 import { toPdfError } from './errors';
+import { newId } from '../id';
 import type { Batch, Label } from '../types';
 
 /** Sequence number for batch references, persisted alongside batches. */
@@ -30,7 +31,7 @@ export async function importPdf(file: File, opts: ImportOptions): Promise<Batch>
     const labels: Label[] = pages.map((p) => parseSlip(p));
 
     return {
-      id: crypto.randomUUID(),
+      id: newId(),
       ref: batchRef(opts.sequence),
       fileName: file.name,
       pageCount: pages.length,

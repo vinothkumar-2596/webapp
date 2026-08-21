@@ -104,9 +104,36 @@ const DETAILS: Record<PdfErrorCode, Omit<PdfErrorDetail, 'code'>> = {
   },
 };
 
+/**
+ * Summarise an unknown thrown value into one diagnostic line.
+ *
+ * A bare `UNKNOWN` is unactionable, and a phone has no console — this string
+ * is the only way an operator can report what actually threw.
+ */
+function describeCause(cause: unknown): string {
+  if (cause === null || cause === undefined) return '';
+  const name = (cause as { name?: string }).name ?? '';
+  const message = (cause as { message?: string }).message ?? String(cause);
+  const head = [name, message].filter(Boolean).join(': ');
+
+  // The top frames locate the failure. A `blob:` frame means it threw inside
+  // the inlined pdf.js worker rather than on the main thread.
+  const stack = (cause as { stack?: string }).stack ?? '';
+  const frames = stack
+    .split(String.fromCharCode(10))
+    .map((l) => l.trim())
+    .filter((l) => l.includes('.js') || l.includes('blob:') || l.includes('http'))
+    .slice(0, 3)
+    .join(' | ');
+
+  return [head, frames].filter(Boolean).join(' <- ').slice(0, 700);
+}
+
 export class PdfError extends Error {
   readonly code: PdfErrorCode;
   readonly detail: PdfErrorDetail;
+  /** Underlying failure, for on-screen diagnostics. Empty when there is none. */
+  readonly diagnostic: string;
 
   constructor(code: PdfErrorCode, cause?: unknown) {
     const d = DETAILS[code];
@@ -114,6 +141,7 @@ export class PdfError extends Error {
     this.name = 'PdfError';
     this.code = code;
     this.detail = { code, ...d };
+    this.diagnostic = describeCause(cause);
   }
 }
 

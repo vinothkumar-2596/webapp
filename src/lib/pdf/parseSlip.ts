@@ -1,5 +1,6 @@
 import type { PageText } from './lines';
 import { matchCountry } from './countries';
+import { newId } from '../id';
 import {
   ORDER_NUMBER_RE,
   type Confidence,
@@ -191,14 +192,6 @@ export function extractProduct(raw: string, lines: string[]): ProductDetails {
 /* ═══════════════════════════════════════════════════════════════════
    Page → Label
    ═══════════════════════════════════════════════════════════════════ */
-
-let counter = 0;
-
-function newId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  counter += 1;
-  return `label-${counter}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 /**
  * Parse one packing-slip page into a Label.

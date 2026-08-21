@@ -208,6 +208,11 @@ function ErrorPanel({ error, onRetry }: { error: PdfError; onRetry: () => void }
         </p>
       ) : null}
       <div className="mt-2 font-mono text-[10.5px] text-ink-6">{code}</div>
+      {error.diagnostic ? (
+        <p className="mx-auto mb-0 mt-1.5 max-w-[430px] break-words font-mono text-[10.5px] leading-snug text-ink-6">
+          {error.diagnostic}
+        </p>
+      ) : null}
       <Button variant="primary" className="mt-4 h-9 px-4" onClick={onRetry}>
         Try another file
       </Button>
