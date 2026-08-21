@@ -1,19 +1,31 @@
 import { useCallback, useRef, useState } from 'react';
-import { AlertCircle, Loader2, Upload, X } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
 import { useStore } from '../app/store';
-import { Button, cn } from '../components/ui';
+import { cn } from '../components/ui';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
 
-const MAX_MB = 50;
-const MAX_PAGES = 200;
+/**
+ * Upload screen, in the original v1 presentation.
+ *
+ * Reproduces v1's card: muted header strip, the numbered "How it works"
+ * list, and a dashed drop zone with the emerald call to action.
+ *
+ * The parsing underneath is unchanged — typed errors, cancellation and the
+ * iOS fixes all stay. Only the presentation is v1's; the engine is not.
+ */
+
+const STEPS = [
+  'Upload your Amazon PDF (each page = one packing slip).',
+  'We extract each recipient address & order details automatically.',
+  'A QR label is generated per page — ready to print.',
+  'Scan the QR to instantly view the order number.',
+];
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'parsing'; page: number; total: number; fileName: string }
   | { kind: 'error'; error: PdfError };
-
-const STEPS = ['Upload PDF', 'Read addresses', 'Generate labels', 'Print & scan'];
 
 export function ImportScreen() {
   const { dispatch, settings } = useStore();
@@ -26,8 +38,7 @@ export function ImportScreen() {
     async (file: File | undefined) => {
       if (!file) return;
 
-      const looksPdf =
-        file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const looksPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       if (!looksPdf) {
         setPhase({ kind: 'error', error: new PdfError('NOT_PDF') });
         return;
@@ -50,6 +61,7 @@ export function ImportScreen() {
           onProgress: (page, total) =>
             setPhase({ kind: 'parsing', page, total, fileName: file.name }),
         });
+        // addBatch also opens the new batch and switches screen.
         dispatch({ type: 'addBatch', batch });
         setPhase({ kind: 'idle' });
       } catch (err) {
@@ -66,107 +78,124 @@ export function ImportScreen() {
     [dispatch, settings.operatorName],
   );
 
-  const currentStep =
-    phase.kind === 'parsing' && phase.total > 0 && phase.page >= phase.total ? 2 : phase.kind === 'parsing' ? 1 : 0;
+  const busy = phase.kind === 'parsing';
 
   return (
-    <section className="flex min-h-[calc(100dvh-56px)] items-center justify-center px-4 py-10 sm:px-5 sm:py-14">
-      <div className="w-full max-w-[660px]">
-        <div className="text-center">
-          <div className="inline-flex h-[26px] items-center gap-2 rounded-full border border-line bg-surface px-3 text-[11.5px] font-medium text-ink-3 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
-            <span className="h-[5px] w-[5px] rounded-full bg-brand-pulse" />
-            Runs locally · nothing uploaded
+    <section className="mx-auto flex min-h-[calc(100dvh-56px)] w-full max-w-[1280px] flex-col items-center justify-center px-3 py-4 sm:px-5 sm:py-7">
+      <div className="w-full max-w-[520px]">
+        <div className="overflow-hidden rounded-[18px] border border-[#e0e0de] bg-surface shadow-[0_4px_20px_rgba(0,0,0,0.07)]">
+          {/* Card header */}
+          <div className="flex items-center justify-between gap-2 border-b border-[#e8e8e6] bg-[#f9f9f7] px-4 py-3 sm:px-[22px] sm:py-3.5">
+            <div className="flex min-w-0 items-center gap-[7px]">
+              <FileText size={16} className="shrink-0 text-brand" />
+              <span className="font-display truncate text-[13px] font-bold text-[#111827] sm:text-[15px]">
+                Upload Amazon Packing Slip PDF
+              </span>
+            </div>
+            <span className="shrink-0 rounded-full border border-[#e0e0de] bg-surface px-2.5 py-0.5 text-[10px] font-bold text-[#6b7280]">
+              Vape de France
+            </span>
           </div>
-          <h1 className="m-0 mt-5 text-[32px] font-bold leading-[1.08] text-ink sm:text-[40px]">
-            Scan a packing slip.
-            <span className="mt-0.5 block text-brand">Get your labels.</span>
-          </h1>
-          <p className="mx-auto mb-0 mt-3 max-w-[468px] text-[14px] leading-relaxed text-ink-4 sm:text-[14.5px]">
-            One Amazon PDF in, one QR shipping label per page out — ready for the printer.
-          </p>
+
+          {/* How it works */}
+          <div className="px-4 pt-3.5 pb-1.5 sm:px-[22px] sm:pt-[18px]">
+            <p className="m-0 mb-2.5 text-[10px] font-bold tracking-[0.08em] text-brand uppercase">
+              How it works
+            </p>
+            <ol className="m-0 flex list-none flex-col gap-[9px] p-0">
+              {STEPS.map((text, i) => (
+                <li key={text} className="flex items-start gap-2.5">
+                  <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-extrabold text-white">
+                    {i + 1}
+                  </span>
+                  <span className="text-[12px] leading-[1.55] text-[#374151]">{text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Drop zone */}
+          <div className="px-4 pt-3.5 pb-[18px] sm:px-[22px] sm:pt-[18px] sm:pb-[22px]">
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={(event) => void handleFile(event.target.files?.[0])}
+            />
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (!busy) setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                if (!busy) void handleFile(event.dataTransfer.files?.[0]);
+              }}
+              className={cn(
+                'flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors sm:px-5 sm:py-8',
+                busy ? 'cursor-default' : 'cursor-pointer',
+                dragging ? 'border-brand bg-[#f0fdf4]' : 'border-[#c8c8c6] bg-[#f9f9f7]',
+              )}
+            >
+              {busy ? (
+                <>
+                  <Loader2 size={36} className="animate-spin text-brand" />
+                  <span className="m-0 text-[13px] font-bold text-[#111827]">
+                    Parsing PDF &amp; building labels…
+                  </span>
+                  <span className="m-0 font-mono text-[11px] text-[#9ca3af]">
+                    {phase.kind === 'parsing' && phase.total > 0
+                      ? `Page ${phase.page} of ${phase.total}`
+                      : 'Reading the document…'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] border border-[#e0e0de] bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.06)] sm:h-[60px] sm:w-[60px]">
+                    <Upload size={24} className="text-brand" />
+                  </span>
+                  <span className="block">
+                    <span className="font-display mb-[3px] block text-[14px] font-extrabold text-[#111827] sm:text-[15px]">
+                      {dragging ? 'Release to upload' : 'Drop your Amazon PDF here'}
+                    </span>
+                    <span className="hidden text-[12px] text-[#9ca3af] sm:block">
+                      or click to browse files
+                    </span>
+                  </span>
+                  <span className="w-full rounded-[10px] bg-brand px-8 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)] sm:w-auto sm:text-[14px]">
+                    Upload PDF
+                  </span>
+                </>
+              )}
+            </button>
+
+            {busy ? (
+              <button
+                type="button"
+                onClick={() => {
+                  abortRef.current?.abort();
+                  setPhase({ kind: 'idle' });
+                }}
+                className="mt-3 w-full cursor-pointer rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] py-2 text-[12.5px] font-semibold text-[#6b7280] hover:text-ink"
+              >
+                Cancel
+              </button>
+            ) : null}
+
+            {phase.kind === 'error' ? (
+              <ErrorBox error={phase.error} onRetry={() => setPhase({ kind: 'idle' })} />
+            ) : null}
+          </div>
         </div>
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,application/pdf"
-          className="hidden"
-          onChange={(event) => void handleFile(event.target.files?.[0])}
-        />
-
-        {phase.kind === 'idle' ? (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              void handleFile(event.dataTransfer.files?.[0]);
-            }}
-            className={cn(
-              'mt-7 block w-full cursor-pointer rounded-[14px] border bg-surface px-6 py-9 text-center font-sans shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(16,24,40,0.18)] transition-[border-color,box-shadow,transform]',
-              'hover:border-brand hover:shadow-[0_1px_1px_rgba(16,24,40,0.04),0_12px_26px_-14px_rgba(11,122,91,0.3)] active:translate-y-px sm:px-7 sm:py-10',
-              dragging ? 'border-brand bg-ok-bg' : 'border-[#e4e7ec]',
-            )}
-          >
-            <span className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-[13px] bg-brand text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_2px_4px_rgba(16,24,40,0.14)]">
-              <Upload size={23} strokeWidth={1.9} />
-            </span>
-            <span className="mt-4 block text-[18px] font-bold text-ink sm:text-[20px]">
-              Scan an Amazon PDF
-            </span>
-            <span className="mt-1.5 block text-[13.5px] text-ink-4">
-              Click to browse, or drop the file anywhere here
-            </span>
-            <span className="mx-auto mt-4 block w-fit min-w-[230px] border-t border-line-soft pt-4 font-mono text-[11px] text-ink-5">
-              PDF · max {MAX_MB} MB · {MAX_PAGES} pages
-            </span>
-          </button>
-        ) : null}
-
-        {phase.kind === 'parsing' ? (
-          <div className="mt-7 rounded-[14px] border border-[#e4e7ec] bg-surface px-6 py-9 text-center shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(16,24,40,0.18)] sm:px-7 sm:py-10">
-            <Loader2 size={28} className="mx-auto animate-spin text-brand" />
-            <div className="mt-4 truncate text-[17px] font-bold">Reading {phase.fileName}</div>
-            <div className="mt-1.5 text-[13.5px] text-ink-4">
-              {phase.total > 0
-                ? `Extracting page ${phase.page} of ${phase.total}`
-                : 'Opening document…'}
-            </div>
-            <div className="mx-auto mt-5 h-[5px] max-w-[280px] overflow-hidden rounded-[3px] bg-line-soft">
-              <div
-                className="h-full rounded-[3px] bg-brand transition-[width] duration-200"
-                style={{
-                  width: phase.total > 0 ? `${(phase.page / phase.total) * 100}%` : '30%',
-                  animation: phase.total === 0 ? 'bar 1.3s ease-in-out infinite' : undefined,
-                }}
-              />
-            </div>
-            <Button
-              className="mt-5"
-              icon={<X size={13} />}
-              onClick={() => {
-                abortRef.current?.abort();
-                setPhase({ kind: 'idle' });
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : null}
-
-        {phase.kind === 'error' ? (
-          <ErrorPanel error={phase.error} onRetry={() => setPhase({ kind: 'idle' })} />
-        ) : null}
-
-        <ProgressStrip current={currentStep} />
-
-        <p className="mb-0 mt-5 text-center text-[11.5px] text-ink-6">
+        <p className="mt-3 mb-0 text-center text-[11px] text-[#9ca3af]">
           Parsed on this device — no customer address is uploaded.
         </p>
       </div>
@@ -174,48 +203,46 @@ export function ImportScreen() {
   );
 }
 
-function ProgressStrip({ current }: { current: number }) {
-  return (
-    <ol className="process-strip" aria-label="Label creation progress">
-      {STEPS.map((label, index) => {
-        const state = index === current ? 'active' : index < current ? 'done' : 'pending';
-        return (
-          <li key={label} className="process-step" data-state={state}>
-            <span className="process-step__number">0{index + 1}</span>
-            <span className="process-step__label">{label}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function ErrorPanel({ error, onRetry }: { error: PdfError; onRetry: () => void }) {
+function ErrorBox({ error, onRetry }: { error: PdfError; onRetry: () => void }) {
   const { title, message, hints, code } = error.detail;
 
   return (
-    <div className="mt-7 rounded-[14px] border border-bad-line bg-surface px-6 py-8 text-center shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(180,35,24,0.18)] sm:px-7">
-      <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-bad-bg text-bad-icon">
-        <AlertCircle size={21} />
-      </span>
-      <div className="mt-3.5 text-[17px] font-bold">{title}</div>
-      <p className="mx-auto mb-0 mt-2 max-w-[430px] text-[13.5px] leading-relaxed text-ink-4">
-        {message}
-      </p>
-      {hints.length > 0 ? (
-        <p className="mx-auto mb-0 mt-2 max-w-[430px] text-[11.5px] leading-relaxed text-ink-5">
-          {hints[0]}
-        </p>
-      ) : null}
-      <div className="mt-2 font-mono text-[10.5px] text-ink-6">{code}</div>
-      {error.diagnostic ? (
-        <p className="mx-auto mb-0 mt-1.5 max-w-[430px] break-words font-mono text-[10.5px] leading-snug text-ink-6">
-          {error.diagnostic}
-        </p>
-      ) : null}
-      <Button variant="primary" className="mt-4 h-9 px-4" onClick={onRetry}>
-        Try another file
-      </Button>
+    <div className="mt-3 overflow-hidden rounded-xl border-[1.5px] border-bad-line">
+      <div className="flex items-center gap-2 bg-bad-bg px-3.5 py-2.5">
+        <AlertCircle size={15} className="shrink-0 text-bad-icon" />
+        <span className="font-display text-[13px] font-bold text-bad-fg">{title}</span>
+        <span className="flex-1" />
+        <span className="shrink-0 font-mono text-[9.5px] text-bad-icon">{code}</span>
+      </div>
+
+      <div className="bg-surface px-3.5 py-3">
+        <p className="m-0 text-[12px] leading-relaxed text-[#374151]">{message}</p>
+
+        {hints.length > 0 ? (
+          <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
+            {hints.map((hint) => (
+              <li key={hint} className="flex gap-2 text-[11.5px] leading-[1.5] text-[#6b7280]">
+                <span className="text-bad-icon">·</span>
+                <span>{hint}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {error.diagnostic ? (
+          <p className="mt-2 mb-0 break-words font-mono text-[10px] leading-snug text-[#9ca3af]">
+            {error.diagnostic}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 w-full cursor-pointer rounded-[10px] border-0 bg-brand py-2.5 text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)] hover:bg-brand-hover"
+        >
+          Try another file
+        </button>
+      </div>
     </div>
   );
 }

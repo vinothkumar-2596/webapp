@@ -5,11 +5,12 @@
    Extracted from the enterprise UI design.
    ══════════════════════════════════════════════════════════════════ */
 @theme {
-  --font-sans: "Roboto", "Segoe UI", Arial, system-ui, sans-serif;
+  --font-sans: "Poppins", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Outfit", "Poppins", system-ui, sans-serif;
   --font-mono: Consolas, "SFMono-Regular", ui-monospace, monospace;
 
   /* Canvas & surfaces */
-  --color-canvas: #f5f6f8;
+  --color-canvas: #eef2ff;
   --color-surface: #ffffff;
   --color-surface-muted: #fafbfc;
   --color-surface-sunken: #f0f2f5;
@@ -27,8 +28,8 @@
   --color-rail-chip-fg: #c7d2e0;
 
   /* Brand */
-  --color-brand: #0b7a5b;
-  --color-brand-hover: #096349;
+  --color-brand: #10b981;
+  --color-brand-hover: #059669;
   --color-brand-pulse: #38bf8e;
 
   /* Text */
