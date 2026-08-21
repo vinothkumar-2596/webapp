@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Layers,
   AlertTriangle,
+  Search,
 } from 'lucide-react';
 import { useStore } from '../app/store';
 import { Badge, Button, Card, EmptyState, cn } from '../components/ui';
@@ -28,7 +29,7 @@ type Tab = 'orders' | 'sheet';
 
 export function BatchScreen() {
   const { activeBatch, activeLabel, batches, settings, search, dispatch, navigate } = useStore();
-  const [tab, setTab] = useState<Tab>('orders');
+  const [tab, setTab] = useState<Tab>('sheet');
   const [editing, setEditing] = useState<Label | null>(null);
 
   const filtered = useMemo(() => {
@@ -99,17 +100,15 @@ export function BatchScreen() {
   const allShownSelected = filtered.length > 0 && filtered.every((l) => l.selected);
 
   return (
-    <div className="mx-auto max-w-[1560px]">
+    <div className="mx-auto max-w-[1060px]">
       {/* Only the labels that pass verification are rendered into the print root. */}
       <PrintSheet labels={toPrint} settings={settings} batchRef={activeBatch.ref} />
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="m-0 text-[20px] font-semibold tracking-[-0.3px]">
-              Batch {activeBatch.ref}
-            </h1>
+            <h1 className="m-0 text-[18px] font-bold">{stats.total} labels</h1>
             {stats.needsReview > 0 ? (
               <Badge tone="warn">{stats.needsReview} need review</Badge>
             ) : (
@@ -117,18 +116,35 @@ export function BatchScreen() {
             )}
             {activeBatch.printedAt ? <Badge tone="neutral">Printed</Badge> : null}
           </div>
-          <p className="mt-1.5 truncate text-[12.5px] text-ink-4">
-            {activeBatch.fileName} · {activeBatch.pageCount} pages · {stats.total} labels ·
-            imported{' '}
-            {new Date(activeBatch.importedAt).toLocaleString(undefined, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            })}{' '}
-            by {activeBatch.operator}
+          <p className="mt-1 truncate text-[12.5px] text-ink-4">
+            {activeBatch.fileName} · one label per page · batch {activeBatch.ref}
           </p>
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div
+            className="flex h-8 overflow-hidden rounded-md border border-line bg-surface"
+            aria-label="Labels per row"
+          >
+            {([1, 2] as const).map((columns) => (
+              <button
+                key={columns}
+                type="button"
+                onClick={() =>
+                  dispatch({ type: 'patchSettings', patch: { labelsPerRow: columns } })
+                }
+                className={cn(
+                  'cursor-pointer border-0 px-3 text-[12.5px] font-medium',
+                  columns === 1 && 'border-r border-line',
+                  settings.labelsPerRow === columns
+                    ? 'bg-brand text-white'
+                    : 'bg-surface text-ink-2 hover:bg-surface-muted',
+                )}
+              >
+                {columns} col
+              </button>
+            ))}
+          </div>
           <Button
             icon={<Plus size={14} />}
             onClick={() => {
@@ -140,23 +156,24 @@ export function BatchScreen() {
             Add label
           </Button>
           <Button
-            variant="danger"
+            variant="secondary"
             icon={<Trash2 size={14} />}
+            aria-label="Delete batch"
+            title="Delete batch"
+            className="w-8 justify-center px-0 text-bad-fg"
             onClick={() => {
               if (window.confirm(`Delete batch ${activeBatch.ref} and all its labels?`)) {
                 dispatch({ type: 'removeBatch', batchId });
               }
             }}
-          >
-            Delete
-          </Button>
+          />
           <Button
             variant="primary"
             icon={<Printer size={14} />}
             disabled={toPrint.length === 0}
             onClick={handlePrint}
           >
-            Print {toPrint.length} label{toPrint.length === 1 ? '' : 's'}
+            Print
           </Button>
         </div>
       </div>
@@ -180,21 +197,20 @@ export function BatchScreen() {
       ) : null}
 
       {/* ── Tabs ────────────────────────────────────────────────── */}
-      <div className="mb-4 flex gap-0.5 border-b border-line">
+      <div className="mb-3.5 flex gap-1">
         {(['orders', 'sheet'] as const).map((id) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              '-mb-px cursor-pointer border-0 border-b-2 bg-transparent px-1 pb-2.5 text-[13px]',
-              'mr-5',
+              'h-8 cursor-pointer rounded-md border px-3 text-[12.5px]',
               tab === id
-                ? 'border-b-brand font-semibold text-brand'
-                : 'border-b-transparent font-medium text-ink-4',
+                ? 'border-ok-line bg-ok-bg font-semibold text-brand'
+                : 'border-transparent bg-transparent font-medium text-ink-4 hover:border-line hover:bg-surface',
             )}
           >
-            {id === 'orders' ? 'Orders & labels' : 'Print sheet'}
+            {id === 'orders' ? 'Review & edit' : 'Label sheet'}
           </button>
         ))}
       </div>
@@ -238,6 +254,18 @@ export function BatchScreen() {
                 </button>
               ) : null}
               <span className="flex-1" />
+              <label className="flex h-8 min-w-[200px] items-center gap-2 rounded-md border border-line bg-surface px-2.5">
+                <Search size={14} className="shrink-0 text-ink-5" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) =>
+                    dispatch({ type: 'setSearch', value: event.target.value })
+                  }
+                  placeholder="Search labels"
+                  className="min-w-0 flex-1 border-0 bg-transparent text-[12.5px] text-ink outline-none"
+                />
+              </label>
               <span className="font-mono text-[11px] text-ink-5">{activeBatch.ref}</span>
             </div>
 
@@ -441,44 +469,34 @@ export function BatchScreen() {
         </div>
       ) : (
         /* ── Print sheet tab ─────────────────────────────────── */
-        <Card>
-          <div className="flex flex-wrap items-center gap-3 border-b border-line bg-surface-muted px-4 py-2.5">
-            <span className="text-[12.5px] font-medium">
-              Print sheet · {settings.paperSize} portrait
-            </span>
-            <span className="text-[12px] text-ink-4">
-              {settings.labelsPerRow === 1 ? '1 label' : '2 labels'} per row ·{' '}
-              {settings.marginMm} mm margin
-            </span>
-            <span className="flex-1" />
-            <Button onClick={() => navigate('template')}>Page setup</Button>
+        <>
+          <div className="rounded-[14px] border border-[#e4e7ec] bg-surface p-4 shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(16,24,40,0.18)] sm:p-[18px]">
+            {toPrint.length === 0 ? (
+              <EmptyState
+                title="Nothing to print"
+                body="Select at least one label, and resolve any that are flagged for review."
+              />
+            ) : (
+              <div
+                className="sheet-grid"
+                style={{ ['--sheet-cols' as string]: String(settings.labelsPerRow) }}
+              >
+                {toPrint.map((label) => (
+                  <ShipLabel
+                    key={label.id}
+                    label={label}
+                    settings={settings}
+                    batchRef={activeBatch.ref}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-
-          <div className="bg-surface-deep p-4 sm:p-6">
-            <div className="mx-auto max-w-[820px] border border-[#d8dce2] bg-surface p-4 shadow-sm sm:p-6">
-              {toPrint.length === 0 ? (
-                <EmptyState
-                  title="Nothing to print"
-                  body="Select at least one label, and resolve any that are flagged for review."
-                />
-              ) : (
-                <div
-                  className="sheet-grid"
-                  style={{ ['--sheet-cols' as string]: String(settings.labelsPerRow) }}
-                >
-                  {toPrint.map((label) => (
-                    <ShipLabel
-                      key={label.id}
-                      label={label}
-                      settings={settings}
-                      batchRef={activeBatch.ref}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
+          <p className="mb-0 mt-3.5 text-center text-[12px] text-ink-5">
+            Prints {settings.labelsPerRow === 1 ? 'one label' : 'two labels'} per row on{' '}
+            {settings.paperSize}. Nothing is uploaded.
+          </p>
+        </>
       )}
 
       <EditLabelDialog

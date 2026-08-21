@@ -5,8 +5,8 @@
    Extracted from the enterprise UI design.
    ══════════════════════════════════════════════════════════════════ */
 @theme {
-  --font-sans: "Roboto", system-ui, -apple-system, sans-serif;
-  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Roboto", "Segoe UI", Arial, system-ui, sans-serif;
+  --font-mono: Consolas, "SFMono-Regular", ui-monospace, monospace;
 
   /* Canvas & surfaces */
   --color-canvas: #f5f6f8;
@@ -99,6 +99,112 @@
    Shipping label — shared by screen preview and print output.
    Sized in millimetres so print output is physically accurate.
    ══════════════════════════════════════════════════════════════════ */
+/* Compact progress rail from the focused importer redesign. */
+.process-strip {
+  display: flex;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid #dfe3e9;
+  border-radius: 11px;
+  background: #e4e8ee;
+  box-shadow:
+    0 1px 1px rgba(16, 24, 40, 0.04),
+    0 8px 20px -14px rgba(16, 24, 40, 0.2);
+}
+
+.process-step {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 42px;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  margin-left: -13px;
+  padding: 0 14px 0 27px;
+  background: #f7f8fa;
+  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%, 13px 50%);
+}
+
+.process-step:first-child {
+  margin-left: 0;
+  padding-left: 15px;
+  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%);
+}
+
+.process-step:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 13px 50%);
+}
+
+.process-step[data-state='active'] {
+  background: var(--color-brand);
+}
+
+.process-step[data-state='done'] {
+  background: var(--color-ok-bg);
+}
+
+.process-step__number {
+  flex: 0 0 auto;
+  color: #a6afba;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.process-step__label {
+  overflow: hidden;
+  color: #4b5563;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process-step[data-state='active'] .process-step__number {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.process-step[data-state='active'] .process-step__label {
+  color: #fff;
+}
+
+.process-step[data-state='done'] .process-step__number,
+.process-step[data-state='done'] .process-step__label {
+  color: var(--color-brand);
+}
+
+@media (max-width: 640px) {
+  .process-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .process-step,
+  .process-step:first-child,
+  .process-step:last-child {
+    height: 38px;
+    margin: 0;
+    padding: 0 11px;
+    border-bottom: 1px solid #dfe3e9;
+    clip-path: none;
+  }
+
+  .process-step:nth-child(odd) {
+    border-right: 1px solid #dfe3e9;
+  }
+
+  .process-step:nth-child(n + 3) {
+    border-bottom: 0;
+  }
+
+  .process-step__label {
+    font-size: 11.5px;
+  }
+}
+
 .ship-label {
   background: #ffffff;
   border: 1px solid var(--color-line-print);

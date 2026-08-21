@@ -46,7 +46,7 @@ type Action =
 
 const initial: State = {
   ready: false,
-  screen: 'overview',
+  screen: 'import',
   batches: [],
   activeBatchId: null,
   activeLabelId: null,

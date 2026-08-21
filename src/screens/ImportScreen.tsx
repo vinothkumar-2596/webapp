@@ -1,17 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { Upload, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Upload, X } from 'lucide-react';
 import { useStore } from '../app/store';
-import { Button, Card, cn } from '../components/ui';
+import { Button, cn } from '../components/ui';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
 
-/**
- * Upload limits, mirrored from lib/pdf/extractText.ts.
- *
- * Duplicated deliberately: importing them would pull the whole pdf.js engine
- * into the initial bundle, which is exactly what the dynamic import below
- * avoids. The parser enforces the real limits — these are for display only.
- */
 const MAX_MB = 50;
 const MAX_PAGES = 200;
 
@@ -20,12 +13,7 @@ type Phase =
   | { kind: 'parsing'; page: number; total: number; fileName: string }
   | { kind: 'error'; error: PdfError };
 
-const STEPS = [
-  'Upload the Amazon packing-slip PDF',
-  'Addresses and order details are extracted',
-  'One QR label is generated per page',
-  'Review flagged labels, then print the sheet',
-];
+const STEPS = ['Upload PDF', 'Read addresses', 'Generate labels', 'Print & scan'];
 
 export function ImportScreen() {
   const { dispatch, settings } = useStore();
@@ -38,7 +26,6 @@ export function ImportScreen() {
     async (file: File | undefined) => {
       if (!file) return;
 
-      // Cheap client-side guards before touching the PDF engine.
       const looksPdf =
         file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       if (!looksPdf) {
@@ -51,8 +38,6 @@ export function ImportScreen() {
       setPhase({ kind: 'parsing', page: 0, total: 0, fileName: file.name });
 
       try {
-        // pdf.js (~1.9 MB) is loaded only when a file is actually selected,
-        // keeping it out of the initial page load.
         const [{ importPdf }, sequence] = await Promise.all([
           import('../lib/pdf/importPdf'),
           nextSequence(),
@@ -81,155 +66,151 @@ export function ImportScreen() {
     [dispatch, settings.operatorName],
   );
 
+  const currentStep =
+    phase.kind === 'parsing' && phase.total > 0 && phase.page >= phase.total ? 2 : phase.kind === 'parsing' ? 1 : 0;
+
   return (
-    <div className="mx-auto max-w-[760px]">
-      <div className="mb-4.5">
-        <h1 className="m-0 text-[20px] font-semibold tracking-[-0.3px]">New import</h1>
-        <p className="mt-1.5 text-[13px] text-ink-4">
-          Upload an Amazon packing-slip PDF. One page produces one QR shipping label.
+    <section className="flex min-h-[calc(100dvh-56px)] items-center justify-center px-4 py-10 sm:px-5 sm:py-14">
+      <div className="w-full max-w-[660px]">
+        <div className="text-center">
+          <div className="inline-flex h-[26px] items-center gap-2 rounded-full border border-line bg-surface px-3 text-[11.5px] font-medium text-ink-3 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+            <span className="h-[5px] w-[5px] rounded-full bg-brand-pulse" />
+            Runs locally · nothing uploaded
+          </div>
+          <h1 className="m-0 mt-5 text-[32px] font-bold leading-[1.08] text-ink sm:text-[40px]">
+            Scan a packing slip.
+            <span className="mt-0.5 block text-brand">Get your labels.</span>
+          </h1>
+          <p className="mx-auto mb-0 mt-3 max-w-[468px] text-[14px] leading-relaxed text-ink-4 sm:text-[14.5px]">
+            One Amazon PDF in, one QR shipping label per page out — ready for the printer.
+          </p>
+        </div>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          className="hidden"
+          onChange={(event) => void handleFile(event.target.files?.[0])}
+        />
+
+        {phase.kind === 'idle' ? (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              void handleFile(event.dataTransfer.files?.[0]);
+            }}
+            className={cn(
+              'mt-7 block w-full cursor-pointer rounded-[14px] border bg-surface px-6 py-9 text-center font-sans shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(16,24,40,0.18)] transition-[border-color,box-shadow,transform]',
+              'hover:border-brand hover:shadow-[0_1px_1px_rgba(16,24,40,0.04),0_12px_26px_-14px_rgba(11,122,91,0.3)] active:translate-y-px sm:px-7 sm:py-10',
+              dragging ? 'border-brand bg-ok-bg' : 'border-[#e4e7ec]',
+            )}
+          >
+            <span className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-[13px] bg-brand text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_2px_4px_rgba(16,24,40,0.14)]">
+              <Upload size={23} strokeWidth={1.9} />
+            </span>
+            <span className="mt-4 block text-[18px] font-bold text-ink sm:text-[20px]">
+              Scan an Amazon PDF
+            </span>
+            <span className="mt-1.5 block text-[13.5px] text-ink-4">
+              Click to browse, or drop the file anywhere here
+            </span>
+            <span className="mx-auto mt-4 block w-fit min-w-[230px] border-t border-line-soft pt-4 font-mono text-[11px] text-ink-5">
+              PDF · max {MAX_MB} MB · {MAX_PAGES} pages
+            </span>
+          </button>
+        ) : null}
+
+        {phase.kind === 'parsing' ? (
+          <div className="mt-7 rounded-[14px] border border-[#e4e7ec] bg-surface px-6 py-9 text-center shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(16,24,40,0.18)] sm:px-7 sm:py-10">
+            <Loader2 size={28} className="mx-auto animate-spin text-brand" />
+            <div className="mt-4 truncate text-[17px] font-bold">Reading {phase.fileName}</div>
+            <div className="mt-1.5 text-[13.5px] text-ink-4">
+              {phase.total > 0
+                ? `Extracting page ${phase.page} of ${phase.total}`
+                : 'Opening document…'}
+            </div>
+            <div className="mx-auto mt-5 h-[5px] max-w-[280px] overflow-hidden rounded-[3px] bg-line-soft">
+              <div
+                className="h-full rounded-[3px] bg-brand transition-[width] duration-200"
+                style={{
+                  width: phase.total > 0 ? `${(phase.page / phase.total) * 100}%` : '30%',
+                  animation: phase.total === 0 ? 'bar 1.3s ease-in-out infinite' : undefined,
+                }}
+              />
+            </div>
+            <Button
+              className="mt-5"
+              icon={<X size={13} />}
+              onClick={() => {
+                abortRef.current?.abort();
+                setPhase({ kind: 'idle' });
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : null}
+
+        {phase.kind === 'error' ? (
+          <ErrorPanel error={phase.error} onRetry={() => setPhase({ kind: 'idle' })} />
+        ) : null}
+
+        <ProgressStrip current={currentStep} />
+
+        <p className="mb-0 mt-5 text-center text-[11.5px] text-ink-6">
+          Parsed on this device — no customer address is uploaded.
         </p>
       </div>
-
-      <Card>
-        {/* Step strip */}
-        <div className="grid grid-cols-2 border-b border-line bg-surface-muted lg:grid-cols-4">
-          {STEPS.map((text, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2.5 border-b border-r border-line px-4 py-3 last:border-r-0 lg:border-b-0"
-            >
-              <span className="mt-px flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-line-soft font-mono text-[11px] font-semibold text-ink-4">
-                {i + 1}
-              </span>
-              <span className="text-[12px] leading-snug text-ink-2">{text}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-5">
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            onChange={(e) => void handleFile(e.target.files?.[0])}
-          />
-
-          {phase.kind === 'idle' ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                void handleFile(e.dataTransfer.files?.[0]);
-              }}
-              className={cn(
-                'rounded-lg border border-dashed px-6 py-9 text-center transition-colors',
-                dragging ? 'border-brand bg-ok-bg' : 'border-[#c6cdd6] bg-surface-muted',
-              )}
-            >
-              <div className="mx-auto mb-3.5 flex h-11 w-11 items-center justify-center rounded-[9px] border border-line bg-surface">
-                <Upload size={20} className="text-brand" />
-              </div>
-              <div className="text-[14px] font-semibold">Drop PDF here or browse</div>
-              <div className="mt-1.5 text-[12.5px] text-ink-4">
-                Single file · PDF only · up to {MAX_MB} MB · max{' '}
-                {MAX_PAGES} pages
-              </div>
-              <div className="mt-4.5 flex justify-center gap-2">
-                <Button variant="primary" onClick={() => inputRef.current?.click()}>
-                  Select file
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {phase.kind === 'parsing' ? (
-            <div className="rounded-lg border border-line p-5">
-              <div className="flex items-center gap-3">
-                <Loader2 size={18} className="shrink-0 animate-spin text-brand" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold">
-                    Parsing {phase.fileName}
-                  </div>
-                  <div className="mt-0.5 text-[12px] text-ink-4">
-                    {phase.total > 0
-                      ? `Extracting recipient blocks — page ${phase.page} of ${phase.total}`
-                      : 'Opening document…'}
-                  </div>
-                </div>
-                <Button
-                  onClick={() => {
-                    abortRef.current?.abort();
-                    setPhase({ kind: 'idle' });
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-              <div className="mt-4 h-[5px] overflow-hidden rounded-[3px] bg-line-soft">
-                <div
-                  className="h-full rounded-[3px] bg-brand transition-[width] duration-200"
-                  style={{
-                    width:
-                      phase.total > 0 ? `${(phase.page / phase.total) * 100}%` : '30%',
-                    animation: phase.total === 0 ? 'bar 1.3s ease-in-out infinite' : undefined,
-                  }}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {phase.kind === 'error' ? <ErrorPanel error={phase.error} onRetry={() => setPhase({ kind: 'idle' })} /> : null}
-        </div>
-      </Card>
-
-      <p className="mt-3.5 text-[11.5px] leading-relaxed text-ink-5">
-        Files are parsed in the browser. No customer address ever leaves this device.
-      </p>
-    </div>
+    </section>
   );
 }
 
-/**
- * Error panel.
- *
- * v1 showed a red box that, for the most common failure (selecting a
- * non-PDF), rendered with no text at all. Every error here carries a
- * headline, an explanation, a stable code, and concrete next steps.
- */
+function ProgressStrip({ current }: { current: number }) {
+  return (
+    <ol className="process-strip" aria-label="Label creation progress">
+      {STEPS.map((label, index) => {
+        const state = index === current ? 'active' : index < current ? 'done' : 'pending';
+        return (
+          <li key={label} className="process-step" data-state={state}>
+            <span className="process-step__number">0{index + 1}</span>
+            <span className="process-step__label">{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function ErrorPanel({ error, onRetry }: { error: PdfError; onRetry: () => void }) {
   const { title, message, hints, code } = error.detail;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-bad-line">
-      <div className="flex items-center gap-2.5 border-b border-bad-line bg-bad-bg px-4 py-3">
-        <AlertCircle size={16} className="shrink-0 text-bad-icon" />
-        <span className="text-[13px] font-semibold text-bad-fg">Import failed — {title}</span>
-        <span className="flex-1" />
-        <span className="shrink-0 rounded border border-bad-line bg-surface px-1.5 font-mono text-[11px] text-bad-fg max-sm:hidden">
-          {code}
-        </span>
-      </div>
-      <div className="bg-surface px-4 pb-4.5 pt-4">
-        <p className="m-0 max-w-[520px] text-[12.5px] leading-relaxed text-ink-2">{message}</p>
-        <ul className="m-0 mt-3 list-none space-y-1.5 p-0">
-          {hints.map((h) => (
-            <li key={h} className="text-[12px] leading-relaxed text-ink-4">
-              · {h}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 flex gap-2">
-          <Button variant="primary" onClick={onRetry}>
-            Try another file
-          </Button>
-        </div>
-      </div>
+    <div className="mt-7 rounded-[14px] border border-bad-line bg-surface px-6 py-8 text-center shadow-[0_1px_1px_rgba(16,24,40,0.03),0_8px_22px_-14px_rgba(180,35,24,0.18)] sm:px-7">
+      <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-bad-bg text-bad-icon">
+        <AlertCircle size={21} />
+      </span>
+      <div className="mt-3.5 text-[17px] font-bold">{title}</div>
+      <p className="mx-auto mb-0 mt-2 max-w-[430px] text-[13.5px] leading-relaxed text-ink-4">
+        {message}
+      </p>
+      {hints.length > 0 ? (
+        <p className="mx-auto mb-0 mt-2 max-w-[430px] text-[11.5px] leading-relaxed text-ink-5">
+          {hints[0]}
+        </p>
+      ) : null}
+      <div className="mt-2 font-mono text-[10.5px] text-ink-6">{code}</div>
+      <Button variant="primary" className="mt-4 h-9 px-4" onClick={onRetry}>
+        Try another file
+      </Button>
     </div>
   );
 }
