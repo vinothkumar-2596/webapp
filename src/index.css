@@ -360,32 +360,3 @@
     transform: rotate(360deg);
   }
 }
-
-/* ══════════════════════════════════════════════════════════════════
-   Motion — Scan Option C import panel
-   All are wrapped in motion-safe: at the call site, and the reduced
-   motion guard below is a second line of defence.
-   ══════════════════════════════════════════════════════════════════ */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
-}
-
-@keyframes shade {
-  0%, 100% { transform: scaleX(1); opacity: 0.55; }
-  50% { transform: scaleX(0.72); opacity: 0.28; }
-}
-
-@keyframes scan {
-  0% { top: 0; opacity: 0; }
-  12% { opacity: 1; }
-  88% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
