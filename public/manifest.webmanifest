@@ -2,8 +2,8 @@
   "name": "Label Console — Vape From France",
   "short_name": "Label Console",
   "description": "Import Amazon packing-slip PDFs and generate print-ready QR shipping labels. Parsed entirely on-device.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#F5F6F8",
@@ -11,7 +11,7 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

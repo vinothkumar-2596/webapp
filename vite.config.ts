@@ -4,6 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 export default defineConfig({
+  // Relative base so the same build works at a domain root (Netlify) and under
+  // a sub-path (GitHub Pages: /webapp/). There is no router, so no deep links
+  // depend on an absolute base.
+  base: './',
+
   plugins: [react(), tailwindcss()],
 
   resolve: {
