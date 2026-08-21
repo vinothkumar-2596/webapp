@@ -30,6 +30,13 @@ export function ShipLabel({
 
   const place = [label.address.postalCode, label.address.city].filter(Boolean).join(' ');
 
+  // Batches imported before the parser stopped duplicating it still hold the
+  // place inside `lines`. Drop it here too so old and new data print alike.
+  const normalise = (value: string) => value.split(' ').filter(Boolean).join(' ').toLowerCase();
+  const streetLines = place
+    ? label.address.lines.filter((line) => normalise(line) !== normalise(place))
+    : label.address.lines;
+
   return (
     <div className="ship-label" style={{ minHeight: size === 'preview' ? undefined : 150 }}>
       <div className="ship-label__body">
@@ -40,8 +47,8 @@ export function ShipLabel({
         </div>
 
         <div className="ship-label__addr">
-          {label.address.lines.length > 0 ? (
-            label.address.lines.map((line, i) => <div key={i}>{line}</div>)
+          {streetLines.length > 0 ? (
+            streetLines.map((line, i) => <div key={i}>{line}</div>)
           ) : (
             <MissingInline>No address</MissingInline>
           )}
@@ -99,10 +106,6 @@ export function ShipLabel({
             No order number
           </div>
         )}
-
-        {settings.showScanHint && order ? (
-          <div className="ship-label__hint">Scan for order</div>
-        ) : null}
       </div>
 
       {blocked ? (

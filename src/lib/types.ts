@@ -167,8 +167,6 @@ export const TemplateSettings = z.object({
   paperSize: PaperSize,
   /** Page margin in millimetres. */
   marginMm: z.number().min(0).max(40),
-  /** Print a short caption under each QR code. */
-  showScanHint: z.boolean(),
   /** Add the batch reference to each label for traceability. */
   includeBatchRef: z.boolean(),
   /**
@@ -185,7 +183,6 @@ export const DEFAULT_SETTINGS: TemplateSettings = {
   labelsPerRow: 2,
   paperSize: 'A4',
   marginMm: 12,
-  showScanHint: true,
   includeBatchRef: true,
   requireVerification: true,
   operatorName: 'Operator',

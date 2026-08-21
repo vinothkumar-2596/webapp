@@ -237,14 +237,21 @@ export function parseSlip(page: PageText): Label {
   // Postal code and city.
   let postalCode: string | null = null;
   let city: string | null = null;
-  for (const line of remaining) {
-    const hit = matchPostalCity(line);
+  let placeIndex = -1;
+  for (let i = 0; i < remaining.length; i++) {
+    const hit = matchPostalCity(remaining[i] ?? '');
     if (hit) {
       postalCode = hit.postalCode;
       city = hit.city;
+      placeIndex = i;
       break;
     }
   }
+
+  // That line is now represented by postalCode + city. Leaving it in `lines`
+  // as well made the label print the place twice, e.g. a second
+  // "92370 Chaville" directly under the first.
+  const streetLines = placeIndex >= 0 ? remaining.filter((_, i) => i !== placeIndex) : remaining;
 
   /* ── Review reasons ─────────────────────────────────────────────── */
   const reviewReasons: ReviewReason[] = [];
@@ -260,7 +267,7 @@ export function parseSlip(page: PageText): Label {
     id: newId(),
     pageNumber: page.pageNumber,
     recipientName,
-    address: { lines: remaining, postalCode, city, country },
+    address: { lines: streetLines, postalCode, city, country },
     phone,
     orderNumber,
     product,

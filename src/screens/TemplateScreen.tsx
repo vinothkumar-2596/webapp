@@ -85,19 +85,6 @@ export function TemplateScreen() {
             </div>
           </SettingRow>
 
-          <SettingRow label="QR scan hint" help="Prints a short caption under each QR code.">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[12.5px] text-ink-4">
-                {settings.showScanHint ? 'Shown' : 'Hidden'}
-              </span>
-              <Toggle
-                label="QR scan hint"
-                checked={settings.showScanHint}
-                onChange={(v) => patch({ showScanHint: v })}
-              />
-            </div>
-          </SettingRow>
-
           <SettingRow
             label="Include batch reference"
             help="Adds the batch ID to every label for traceability."

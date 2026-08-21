@@ -83,6 +83,16 @@ describe('address', () => {
     expect(label.address.city).toBe('Lyon');
   });
 
+  it('does not leave the postcode/city line in address.lines', () => {
+    // Regression: the place is carried by postalCode + city, so keeping the
+    // same line in `lines` made the label print "69003 Lyon" twice.
+    const label = parse(F.FR_STANDARD);
+    expect(label.address.postalCode).toBe('69003');
+    expect(label.address.city).toBe('Lyon');
+    expect(label.address.lines).not.toContain('69003 Lyon');
+    expect(label.address.lines.filter((l) => l.includes('Lyon'))).toHaveLength(0);
+  });
+
   it('keeps long addresses intact instead of truncating to a fixed window', () => {
     const label = parse(F.FR_LONG_ADDRESS);
     expect(label.recipientName.value).toBe('Léa Dubois');

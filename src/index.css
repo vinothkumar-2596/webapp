@@ -267,13 +267,6 @@
   gap: 4px;
 }
 
-.ship-label__hint {
-  font-size: 7px;
-  color: var(--color-ink-4);
-  text-align: center;
-  line-height: 1.3;
-}
-
 /* Sheet grid — column count driven by a CSS variable so the template
    setting genuinely controls both screen and paper output. */
 .sheet-grid {
