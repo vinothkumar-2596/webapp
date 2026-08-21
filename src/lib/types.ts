@@ -222,3 +222,23 @@ export function destinationOf(label: Label): string {
   const parts = [place || null, country.value].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : '—';
 }
+
+/** Summary counts used across the UI. */
+export interface BatchStats {
+  total: number;
+  clean: number;
+  needsReview: number;
+  selected: number;
+}
+
+export function statsFor(labels: Label[]): BatchStats {
+  let clean = 0;
+  let review = 0;
+  let selected = 0;
+  for (const l of labels) {
+    if (needsReview(l)) review += 1;
+    else clean += 1;
+    if (l.selected) selected += 1;
+  }
+  return { total: labels.length, clean, needsReview: review, selected };
+}

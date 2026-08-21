@@ -45,22 +45,4 @@ export async function importPdf(file: File, opts: ImportOptions): Promise<Batch>
   }
 }
 
-/** Summary counts used across the UI. */
-export interface BatchStats {
-  total: number;
-  clean: number;
-  needsReview: number;
-  selected: number;
-}
-
-export function statsFor(labels: Label[]): BatchStats {
-  let clean = 0;
-  let needsReview = 0;
-  let selected = 0;
-  for (const l of labels) {
-    if (l.reviewReasons.length === 0 || l.reviewed) clean += 1;
-    else needsReview += 1;
-    if (l.selected) selected += 1;
-  }
-  return { total: labels.length, clean, needsReview, selected };
-}
+export { statsFor, type BatchStats } from '../types';

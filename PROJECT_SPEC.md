@@ -1,4 +1,13 @@
 # Vape de France — Amazon PDF → QR Shipping Label Generator
+
+> ## ⚠️ HISTORICAL DOCUMENT
+>
+> This describes **v1**, the codebase that has since been replaced by the
+> TypeScript rebuild in this repository. It is kept as the record of what the
+> original did and which defects the rebuild set out to fix.
+>
+> For the current system, see [README.md](./README.md) and [CLAUDE.md](./CLAUDE.md).
+
 ## Complete Technical Specification
 
 > **Purpose of this document:** a full, self-contained reference for the existing

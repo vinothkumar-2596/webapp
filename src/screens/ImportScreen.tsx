@@ -2,10 +2,18 @@ import { useCallback, useRef, useState } from 'react';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { useStore } from '../app/store';
 import { Button, Card, cn } from '../components/ui';
-import { importPdf } from '../lib/pdf/importPdf';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
-import { MAX_FILE_BYTES, MAX_PAGES } from '../lib/pdf/extractText';
+
+/**
+ * Upload limits, mirrored from lib/pdf/extractText.ts.
+ *
+ * Duplicated deliberately: importing them would pull the whole pdf.js engine
+ * into the initial bundle, which is exactly what the dynamic import below
+ * avoids. The parser enforces the real limits — these are for display only.
+ */
+const MAX_MB = 50;
+const MAX_PAGES = 200;
 
 type Phase =
   | { kind: 'idle' }
@@ -43,7 +51,13 @@ export function ImportScreen() {
       setPhase({ kind: 'parsing', page: 0, total: 0, fileName: file.name });
 
       try {
-        const sequence = await nextSequence();
+        // pdf.js (~1.9 MB) is loaded only when a file is actually selected,
+        // keeping it out of the initial page load.
+        const [{ importPdf }, sequence] = await Promise.all([
+          import('../lib/pdf/importPdf'),
+          nextSequence(),
+        ]);
+
         const batch = await importPdf(file, {
           operator: settings.operatorName,
           sequence,
@@ -123,7 +137,7 @@ export function ImportScreen() {
               </div>
               <div className="text-[14px] font-semibold">Drop PDF here or browse</div>
               <div className="mt-1.5 text-[12.5px] text-ink-4">
-                Single file · PDF only · up to {Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB · max{' '}
+                Single file · PDF only · up to {MAX_MB} MB · max{' '}
                 {MAX_PAGES} pages
               </div>
               <div className="mt-4.5 flex justify-center gap-2">

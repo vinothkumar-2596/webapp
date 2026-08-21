@@ -31,3 +31,9 @@ dist/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Local Claude Code settings
+.claude/settings.local.json

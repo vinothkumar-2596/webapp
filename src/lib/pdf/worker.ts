@@ -1,24 +1,3 @@
-/**
- * Why `legacy/`, not the default build
- * ════════════════════════════════════
- *
- * pdf.js v6's DEFAULT build calls `Promise.try`, `Promise.withResolvers`,
- * `Math.sumPrecise` and `URL.parse`, and ships no polyfills for any of them.
- * `Math.sumPrecise` only landed in Chrome 137, so on an older Android WebView,
- * Samsung Internet, iOS Safari or Firefox the worker throws mid-parse and the
- * UI blames the file ("This PDF cannot be read").
- *
- * The `legacy/` build is upstream's answer: same API, but it bundles core-js
- * polyfills for 36+ built-ins and installs them into whatever scope it loads
- * in — main thread AND worker. A worker has its own global, so polyfilling on
- * the main thread alone does nothing for it.
- *
- * Verified against the shipped bundle: importing `legacy/pdf.worker.min.mjs`
- * installs all four built-ins; importing `build/pdf.worker.min.mjs` installs
- * none. Costs ~50 KB on the worker, ~57 KB on the main bundle.
- *
- * Do not "optimise" these back to plain 'pdfjs-dist' — that is the bug.
- */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 /**
@@ -37,6 +16,12 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
  *     serves module workers, so iOS must be verified against `npm run preview`,
  *     never `npm run dev`.
  *
+ * The `legacy/` build is mandatory — see CLAUDE.md. pdf.js v6's default build
+ * calls Promise.try, Promise.withResolvers, Math.sumPrecise and URL.parse with
+ * no polyfills; Math.sumPrecise is Chrome 137+. legacy/ bundles core-js and
+ * installs the polyfills into whichever scope loads it, main thread AND worker.
+ * A main-thread-only polyfill cannot fix the worker — it is a separate realm.
+ *
  * Changed from v1: there is no CDN fallback. v1 silently fell back to loading
  * the worker from cdnjs, which broke offline use, added a third-party
  * code-execution dependency, and quietly defeated the "nothing leaves your
@@ -49,12 +34,14 @@ let cached: pdfjsLib.PDFWorker | null = null;
 export function getPdfWorker(): pdfjsLib.PDFWorker {
   if (cached && !cached.destroyed) return cached;
 
-  const port = new PdfWorkerInline() as unknown as Worker;
-  cached = new pdfjsLib.PDFWorker({ port });
+  // PDFWorker.create() is used rather than `new PDFWorker()` because the
+  // generated .d.ts mistypes the constructor's `port` as `null | undefined`,
+  // while the documented PDFWorkerParameters (and the runtime) accept a Worker.
+  cached = pdfjsLib.PDFWorker.create({ port: new PdfWorkerInline() });
   return cached;
 }
 
-/** Release the worker. Called when the app tears down. */
+/** Release the worker. */
 export function destroyPdfWorker(): void {
   if (cached && !cached.destroyed) cached.destroy();
   cached = null;

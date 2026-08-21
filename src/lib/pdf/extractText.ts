@@ -1,24 +1,17 @@
-// legacy/ build — see the note in ./worker.ts. Both scopes must use it.
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { getPdfWorker } from './worker';
-import { runsToLines, type Run, type PageText } from './lines';
+import { runsToLines, type PageText } from './lines';
 import { PdfError, toPdfError } from './errors';
 
-/** One page of a PDF, reconstructed into visual lines. */
-export interface PageText {
-  pageNumber: number;
-  /** Lines top-to-bottom, each reading left-to-right. */
-  lines: string[];
-  /** All lines joined by \n. Convenience for whole-page regex matching. */
-  raw: string;
-}
-
 export { runsToLines } from './lines';
-export type { Run } from './lines';
+export type { Run, PageText } from './lines';
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 export const MAX_PAGES = 200;
+
+/** Progress callback: fired after each page is read. */
+export type ProgressFn = (page: number, total: number) => void;
 
 /** Read a File/Blob into an ArrayBuffer, with a FileReader fallback for old iOS. */
 async function readBytes(file: File | Blob): Promise<ArrayBuffer> {
@@ -37,18 +30,23 @@ async function readBytes(file: File | Blob): Promise<ArrayBuffer> {
   }
 }
 
-/** Verify the %PDF magic bytes before handing anything to pdf.js. */
+/**
+ * Verify the %PDF magic bytes before handing anything to pdf.js.
+ *
+ * v1 read 4 bytes unconditionally, which threw a RangeError on any file
+ * smaller than that — surfacing as a generic error instead of "not a PDF".
+ */
 function assertPdfHeader(buffer: ArrayBuffer): void {
   if (buffer.byteLength < 5) throw new PdfError('NOT_PDF');
   const head = new Uint8Array(buffer, 0, 5);
-  // "%PDF-"
   const ok =
-    head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46 && head[4] === 0x2d;
+    head[0] === 0x25 && // %
+    head[1] === 0x50 && // P
+    head[2] === 0x44 && // D
+    head[3] === 0x46 && // F
+    head[4] === 0x2d; //  -
   if (!ok) throw new PdfError('NOT_PDF');
 }
-
-/** Progress callback: fired after each page is read. */
-export type ProgressFn = (page: number, total: number) => void;
 
 /**
  * Extract text from a PDF, page by page, reconstructed into visual lines.
@@ -63,17 +61,18 @@ export async function extractPdfText(
   const buffer = await readBytes(file);
   assertPdfHeader(buffer);
 
+  const task = pdfjsLib.getDocument({
+    data: new Uint8Array(buffer),
+    worker: getPdfWorker(),
+    // Packing slips are text documents; skip resources we never read.
+    disableFontFace: true,
+  });
+
   let doc: pdfjsLib.PDFDocumentProxy;
   try {
-    const task = pdfjsLib.getDocument({
-      data: new Uint8Array(buffer),
-      worker: getPdfWorker(),
-      // Packing slips are text documents; skip resources we never read.
-      disableFontFace: true,
-      isEvalSupported: false,
-    });
     doc = await task.promise;
   } catch (err) {
+    void task.destroy();
     throw toPdfError(err);
   }
 
@@ -90,7 +89,7 @@ export async function extractPdfText(
       try {
         const content = await page.getTextContent();
 
-        const runs: Run[] = [];
+        const runs = [];
         for (const item of content.items) {
           const t = item as TextItem;
           if (typeof t.str !== 'string' || t.str.trim().length === 0) continue;
@@ -121,6 +120,6 @@ export async function extractPdfText(
 
     return pages;
   } finally {
-    await doc.destroy();
+    await task.destroy();
   }
 }

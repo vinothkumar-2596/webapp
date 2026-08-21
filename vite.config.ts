@@ -24,5 +24,11 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: true,
+    // Vite 8 / Rolldown: opt in so the dynamically-imported pdf.js engine
+    // (~1.9 MB with its inlined worker) becomes its own chunk instead of
+    // being merged into the initial bundle.
+    rolldownOptions: {
+      output: { codeSplitting: true },
+    },
   },
 })
