@@ -62,6 +62,14 @@ export function BatchScreen() {
     }
   };
 
+  // Mirror the Word output on screen: group into A4 sheets of 6 (2×3), in page
+  // order, so the preview matches the downloaded file 1:1.
+  const PER_PAGE = 6;
+  const ordered = [...labels].sort((a, b) => a.pageNumber - b.pageNumber);
+  const pages: Label[][] = [];
+  for (let i = 0; i < ordered.length; i += PER_PAGE) pages.push(ordered.slice(i, i + PER_PAGE));
+  if (pages.length === 0) pages.push([]);
+
   return (
     <div className="mx-auto max-w-[900px]">
       {/* Off-screen print sheet — every label, clean (no edit/delete icons). */}
@@ -112,29 +120,58 @@ export function BatchScreen() {
           body="Every label was deleted. Upload a new PDF to start again."
         />
       ) : (
-        <div className="sheet-grid">
-          {labels.map((label) => (
-            <div key={label.id} className="relative">
-              <ShipLabel label={label} />
-              <div className="no-print absolute bottom-2 right-2 flex gap-1">
-                <button
-                  type="button"
-                  aria-label="Edit label"
-                  title="Edit"
-                  onClick={() => setEditing(label)}
-                  className="cursor-pointer rounded-md border border-line bg-surface/95 p-1.5 text-ink-3 shadow-sm hover:text-brand"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Delete label"
-                  title="Delete"
-                  onClick={() => dispatch({ type: 'deleteLabel', batchId, labelId: label.id })}
-                  className="cursor-pointer rounded-md border border-bad-line bg-surface/95 p-1.5 text-bad-fg shadow-sm hover:bg-bad-bg"
-                >
-                  <Trash2 size={14} />
-                </button>
+        <div className="flex flex-col items-center gap-7">
+          {pages.map((pageLabels, pageIdx) => (
+            <div key={pageIdx} className="w-full">
+              <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-5">
+                A4 page {pageIdx + 1} of {pages.length}
+              </div>
+              {/* An A4-proportioned sheet: a fixed 2×3 grid of 6 cells. */}
+              <div className="mx-auto grid aspect-[210/297] w-full max-w-[540px] grid-cols-2 grid-rows-3 gap-[2.5%] rounded-md border border-line bg-white p-[2.5%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
+                {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
+                  const label = pageLabels[cellIdx];
+                  if (!label) {
+                    // Fixed empty cell — keeps the 2×3 grid even when a page
+                    // isn't full (e.g. 1 label → 5 empty cells).
+                    return (
+                      <div
+                        key={cellIdx}
+                        aria-hidden
+                        className="rounded-sm border border-dashed border-line-soft"
+                      />
+                    );
+                  }
+                  return (
+                    <div
+                      key={label.id}
+                      className="relative overflow-hidden rounded-sm border border-line-print"
+                    >
+                      <ShipLabel label={label} bare />
+                      <div className="no-print absolute bottom-1.5 right-1.5 flex gap-1">
+                        <button
+                          type="button"
+                          aria-label="Edit label"
+                          title="Edit"
+                          onClick={() => setEditing(label)}
+                          className="cursor-pointer rounded-md border border-line bg-surface/95 p-1 text-ink-3 shadow-sm hover:text-brand"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete label"
+                          title="Delete"
+                          onClick={() =>
+                            dispatch({ type: 'deleteLabel', batchId, labelId: label.id })
+                          }
+                          className="cursor-pointer rounded-md border border-bad-line bg-surface/95 p-1 text-bad-fg shadow-sm hover:bg-bad-bg"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

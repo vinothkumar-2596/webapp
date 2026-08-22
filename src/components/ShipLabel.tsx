@@ -13,9 +13,13 @@ import { isBlocked } from '../lib/types';
 export function ShipLabel({
   label,
   size = 'normal',
+  bare = false,
 }: {
   label: Label;
   size?: 'normal' | 'preview';
+  /** Drop the label's own border/radius and fill its container — used inside
+   *  the fixed A4 grid cells, where the cell provides the border. */
+  bare?: boolean;
 }) {
   const qrPx = size === 'preview' ? 78 : 62;
   const blocked = isBlocked(label);
@@ -34,7 +38,10 @@ export function ShipLabel({
     : label.address.lines;
 
   return (
-    <div className="ship-label" style={{ minHeight: size === 'preview' ? undefined : 150 }}>
+    <div
+      className={bare ? 'ship-label ship-label--bare' : 'ship-label'}
+      style={{ minHeight: size === 'preview' || bare ? undefined : 150 }}
+    >
       <div className="ship-label__body">
         <div className="ship-label__name">
           {name ?? <MissingInline>No recipient name</MissingInline>}

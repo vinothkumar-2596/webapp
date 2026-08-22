@@ -220,6 +220,14 @@
   page-break-inside: avoid;
 }
 
+/* Inside the fixed A4 grid cells the cell draws the border, so the label
+   itself is borderless and fills the whole cell. */
+.ship-label--bare {
+  border: 0;
+  border-radius: 0;
+  height: 100%;
+}
+
 .ship-label__body {
   flex: 1;
   min-width: 0;

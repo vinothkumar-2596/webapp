@@ -7,21 +7,14 @@ import { nextSequence } from '../lib/storage';
 import { isInstalledApp } from '../lib/installWindow';
 
 /**
- * Upload screen, in the original v1 presentation.
+ * Upload screen.
  *
- * Reproduces v1's card: muted header strip, the numbered "How it works"
- * list, and a dashed drop zone with the emerald call to action.
+ * A single card: muted header strip and a dashed drop zone with the emerald
+ * call to action.
  *
  * The parsing underneath is unchanged — typed errors, cancellation and the
- * iOS fixes all stay. Only the presentation is v1's; the engine is not.
+ * iOS fixes all stay.
  */
-
-const STEPS = [
-  'Upload your Amazon PDF (each page = one packing slip).',
-  'We extract each recipient address & order details automatically.',
-  'A QR label is generated per page — ready to print.',
-  'Scan the QR to instantly view the order number.',
-];
 
 type Phase =
   | { kind: 'idle' }
@@ -102,23 +95,6 @@ export function ImportScreen() {
             <span className="shrink-0 rounded-full border border-[#e0e0de] bg-surface px-2.5 py-0.5 text-[10px] font-bold text-[#6b7280]">
               Vape de France
             </span>
-          </div>
-
-          {/* How it works */}
-          <div className="px-4 pt-3.5 pb-1.5 sm:px-[22px] sm:pt-[18px]">
-            <p className="m-0 mb-2.5 text-[10px] font-bold tracking-[0.08em] text-brand uppercase">
-              How it works
-            </p>
-            <ol className="m-0 flex list-none flex-col gap-[9px] p-0">
-              {STEPS.map((text, i) => (
-                <li key={text} className="flex items-start gap-2.5">
-                  <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-extrabold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="text-[12px] leading-[1.55] text-[#374151]">{text}</span>
-                </li>
-              ))}
-            </ol>
           </div>
 
           {/* Drop zone */}
