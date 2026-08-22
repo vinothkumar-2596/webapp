@@ -233,41 +233,46 @@
   border: 0;
   border-radius: 0;
   height: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 2.5cqw;
-  padding: 6% 7%;
+  flex-direction: row;
+  align-items: center;
+  gap: 3cqw;
+  padding: 4% 5%;
+  /* Width-based container units. The cell aspect ratio is fixed, so sizing by
+     width scales type + QR proportionally on both the small preview and the
+     full-size printed sheet — and, unlike height units, it never collapses on
+     an indefinite cell height. */
   container-type: inline-size;
 }
 
-/* Natural-height block. The base rule sets flex:1 for the old side-by-side
-   layout; in this column layout that stretches the body and shoves the text
-   to the top, so longer addresses overrun the cell and clip. Letting the
-   block size to its content keeps the QR + address centred and fully visible. */
+/* Recipient details on the left, filling the remaining width, left-aligned.
+   `order` places the body first even though the QR comes first in the DOM. */
 .ship-label--bare .ship-label__body {
-  flex: 0 0 auto;
+  order: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
 }
 
 .ship-label--bare .ship-label__name {
   margin-top: 0;
-  font-size: 4.6cqw;
+  font-size: 5cqw;
   line-height: 1.2;
 }
 
 .ship-label--bare .ship-label__addr {
-  font-size: 3.7cqw;
-  line-height: 1.38;
-  margin-top: 1.4cqw;
+  font-size: 4cqw;
+  line-height: 1.4;
+  margin-top: 1.5cqw;
 }
 
-/* QR ~28% of the cell width — big enough to scan, small enough that even a
-   long, multi-line address still fits the cell height without clipping. */
+/* QR on the right, square, ~28% of the cell width. */
 .ship-label--bare .ship-label__qr {
-  width: 28cqw;
-  align-self: center;
+  order: 1;
   flex: 0 0 auto;
-  min-width: 0;
+  align-self: center;
+  width: 28cqw;
+  height: auto;
+  aspect-ratio: 1 / 1;
 }
 
 .ship-label__body {
@@ -338,8 +343,8 @@
 .print-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 4mm;
+  grid-template-rows: repeat(5, 1fr);
+  gap: 3mm;
   width: 100%;
   height: 100%;
 }

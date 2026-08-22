@@ -25,12 +25,13 @@ import type { Batch, Label } from '../types';
    document — every field (name, address, phone, order number) is plain,
    editable text — laid out on a FIXED A4 grid:
 
-       A4 portrait · 2 columns × 3 rows · 6 label cells per page
+       A4 portrait · 2 columns × 5 rows · 10 label cells per page
 
-   The cell size is constant regardless of how many labels there are.
-   One PDF page → one label → one cell, filled left-to-right, top-to-
-   bottom. Page 1 takes labels 1–6, page 2 takes 7–12, and so on; the
-   last page's unused cells are left blank at the same fixed size.
+   Within each cell the recipient details are left-aligned and the QR sits
+   on the right. The cell size is constant regardless of how many labels
+   there are. One PDF page → one label → one cell, filled left-to-right,
+   top-to-bottom. Page 1 takes labels 1–10, page 2 takes 11–20, and so on;
+   the last page's unused cells are left blank at the same fixed size.
 
    Layout only — the on-screen Edit/Delete controls never reach here.
    ═══════════════════════════════════════════════════════════════════ */
@@ -42,23 +43,45 @@ const A4_HEIGHT = 16838;
 const MARGIN = 567; // ~10 mm all round
 
 const COLS = 2;
-const ROWS = 3;
-const PER_PAGE = COLS * ROWS; // 6
+const ROWS = 5;
+const PER_PAGE = COLS * ROWS; // 10
 
 const CONTENT_WIDTH = A4_WIDTH - MARGIN * 2;
 const CONTENT_HEIGHT = A4_HEIGHT - MARGIN * 2;
 
-// Height held back below the 3-row grid. Word adds per-cell margins and always
+// Height held back below the grid. Word adds per-cell margins and always
 // appends a paragraph after a table (the one that carries the section break),
 // so a grid sized to the full content height ends up a hair too tall — the
-// third row spills onto a second physical page and each sheet prints only 4
-// labels instead of 6. Reserving this slack keeps all three rows on one page.
+// last row spills onto a second physical page and the sheet prints fewer
+// labels than it should. Reserving this slack keeps all rows on one page.
 const GRID_RESERVE = 1700;
 
 const COL_WIDTH = Math.floor(CONTENT_WIDTH / COLS); // fixed cell width
 const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed cell height
 
+// Within each label cell the details sit on the left and the QR on the right.
+// Word stacks paragraphs top-to-bottom, so a borderless nested 2-column table
+// is the reliable way to place them side by side.
+const OUTER_CELL_PAD = 140; // left/right margin inside each label cell
+const QR_COL_W = 1500; // ~2.6 cm column for the QR on the right
+const TEXT_COL_W = COL_WIDTH - OUTER_CELL_PAD * 2 - QR_COL_W;
+
 const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: 'D0D5DD' } as const;
+const NONE_BORDER = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } as const;
+const NO_TABLE_BORDERS = {
+  top: NONE_BORDER,
+  bottom: NONE_BORDER,
+  left: NONE_BORDER,
+  right: NONE_BORDER,
+  insideHorizontal: NONE_BORDER,
+  insideVertical: NONE_BORDER,
+} as const;
+const NO_CELL_BORDERS = {
+  top: NONE_BORDER,
+  bottom: NONE_BORDER,
+  left: NONE_BORDER,
+  right: NONE_BORDER,
+} as const;
 
 interface Entry {
   label: Label;
@@ -109,45 +132,65 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
   });
 }
 
-/** One filled label cell. */
+/** One filled label cell: recipient details on the left, QR on the right. */
 function labelCell({ label, qr }: Entry): TableCell {
-  const children: Paragraph[] = [];
+  const textParas: Paragraph[] = [];
 
-  // QR on top, centred — then the recipient details beneath it.
-  if (qr) {
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 120 },
-        children: [
-          new ImageRun({ type: 'png', data: qr, transformation: { width: 110, height: 110 } }),
-        ],
-      }),
-    );
-  }
-
-  children.push(line(label.recipientName.value ?? 'No recipient name', { bold: true, size: 22 }));
+  textParas.push(line(label.recipientName.value ?? 'No recipient name', { bold: true, size: 22 }));
 
   const place = [label.address.postalCode, label.address.city].filter(Boolean).join(' ');
-  for (const l of streetLinesOf(label)) children.push(line(l));
-  if (place) children.push(line(place));
+  for (const l of streetLinesOf(label)) textParas.push(line(l));
+  if (place) textParas.push(line(place));
   if (label.address.country.value) {
-    children.push(line(label.address.country.value.toUpperCase(), { bold: true }));
+    textParas.push(line(label.address.country.value.toUpperCase(), { bold: true }));
   }
 
   if (label.phone.value) {
     const phone = label.phoneIsMobile ? `N° portable : ${label.phone.value}` : label.phone.value;
-    children.push(line(phone, { bold: true }));
+    textParas.push(line(phone, { bold: true }));
   }
+
+  const qrPara = qr
+    ? new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new ImageRun({ type: 'png', data: qr, transformation: { width: 96, height: 96 } }),
+        ],
+      })
+    : new Paragraph('');
+
+  // Borderless inner table: details left, QR right, both centred vertically.
+  const inner = new Table({
+    layout: TableLayoutType.FIXED,
+    columnWidths: [TEXT_COL_W, QR_COL_W],
+    width: { size: TEXT_COL_W + QR_COL_W, type: WidthType.DXA },
+    borders: NO_TABLE_BORDERS,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: TEXT_COL_W, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: NO_CELL_BORDERS,
+            margins: { top: 0, bottom: 0, left: 0, right: 80 },
+            children: textParas,
+          }),
+          new TableCell({
+            width: { size: QR_COL_W, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: NO_CELL_BORDERS,
+            children: [qrPara],
+          }),
+        ],
+      }),
+    ],
+  });
 
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
-    // Same concept as the web / A4 preview: the QR + details block is centred
-    // vertically in the cell (justify-content: center on screen == vAlign
-    // center here), the QR centred on top, the address left-aligned beneath.
     verticalAlign: VerticalAlign.CENTER,
-    margins: { top: 100, bottom: 100, left: 160, right: 160 },
-    children,
+    margins: { top: 60, bottom: 60, left: OUTER_CELL_PAD, right: OUTER_CELL_PAD },
+    children: [inner],
   });
 }
 

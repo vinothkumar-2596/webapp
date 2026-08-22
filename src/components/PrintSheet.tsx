@@ -9,10 +9,10 @@ import type { Label, TemplateSettings } from '../lib/types';
  * Rendered into a portal on <body> so print CSS can hide the entire app
  * shell with `body > *:not(#print-root)` and show only this.
  *
- * Output is a FIXED A4 grid: every page is 2 columns × 3 rows = 6 equal
+ * Output is a FIXED A4 grid: every page is 2 columns × 5 rows = 10 equal
  * cells, and each label fills exactly one cell at a constant size no matter
- * how many labels there are. Labels are laid out in page order — 6 per sheet,
- * page 1 takes labels 1–6, page 2 takes 7–12, and so on — with the last
+ * how many labels there are. Labels are laid out in page order — 10 per sheet,
+ * page 1 takes labels 1–10, page 2 takes 11–20, and so on — with the last
  * sheet's unused cells left blank. This mirrors the Word export and the
  * on-screen preview 1:1.
  *
@@ -21,8 +21,8 @@ import type { Label, TemplateSettings } from '../lib/types';
  */
 
 const COLS = 2;
-const ROWS = 3;
-const PER_PAGE = COLS * ROWS; // 6
+const ROWS = 5;
+const PER_PAGE = COLS * ROWS; // 10
 
 // Physical portrait page size in millimetres per paper choice, so printed
 // cells are identical on every page regardless of label count.

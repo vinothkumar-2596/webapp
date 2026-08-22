@@ -62,9 +62,9 @@ export function BatchScreen() {
     }
   };
 
-  // Mirror the Word output on screen: group into A4 sheets of 6 (2×3), in page
+  // Mirror the Word output on screen: group into A4 sheets of 10 (2×5), in page
   // order, so the preview matches the downloaded file 1:1.
-  const PER_PAGE = 6;
+  const PER_PAGE = 10;
   const ordered = [...labels].sort((a, b) => a.pageNumber - b.pageNumber);
   const pages: Label[][] = [];
   for (let i = 0; i < ordered.length; i += PER_PAGE) pages.push(ordered.slice(i, i + PER_PAGE));
@@ -99,7 +99,7 @@ export function BatchScreen() {
             icon={<FileText size={14} />}
             disabled={labels.length === 0 || exporting}
             onClick={handleWord}
-            title="Download an editable Word file — A4, 6 labels per page"
+            title="Download an editable Word file — A4, 10 labels per page"
           >
             {exporting ? 'Preparing…' : 'Word'}
           </Button>
@@ -126,13 +126,13 @@ export function BatchScreen() {
               <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-5">
                 A4 page {pageIdx + 1} of {pages.length}
               </div>
-              {/* An A4-proportioned sheet: a fixed 2×3 grid of 6 cells. */}
-              <div className="mx-auto grid aspect-[210/297] w-full max-w-[760px] grid-cols-2 grid-rows-3 gap-[2.5%] rounded-md border border-line bg-white p-[2.5%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
+              {/* An A4-proportioned sheet: a fixed 2×5 grid of 10 cells. */}
+              <div className="mx-auto grid aspect-[210/297] w-full max-w-[760px] grid-cols-2 grid-rows-5 gap-[2%] rounded-md border border-line bg-white p-[2%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
                 {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
                   const label = pageLabels[cellIdx];
                   if (!label) {
-                    // Fixed empty cell — keeps the 2×3 grid even when a page
-                    // isn't full (e.g. 1 label → 5 empty cells).
+                    // Fixed empty cell — keeps the 2×5 grid even when a page
+                    // isn't full (e.g. 1 label → 9 empty cells).
                     return (
                       <div
                         key={cellIdx}
