@@ -235,26 +235,28 @@
   height: 100%;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  gap: 3cqw;
-  padding: 6% 6%;
+  justify-content: flex-start;
+  gap: 2cqw;
+  padding: 5% 6%;
   container-type: inline-size;
 }
 
 .ship-label--bare .ship-label__name {
   margin-top: 0;
-  font-size: 5.4cqw;
+  font-size: 5cqw;
   line-height: 1.25;
 }
 
 .ship-label--bare .ship-label__addr {
-  font-size: 4.3cqw;
-  line-height: 1.45;
-  margin-top: 2cqw;
+  font-size: 4cqw;
+  line-height: 1.4;
+  margin-top: 1.5cqw;
 }
 
+/* Match the Word file: the QR is ~34% of the cell width, leaving the rest
+   of the height for the name/address so nothing clips. */
 .ship-label--bare .ship-label__qr {
-  width: 52cqw;
+  width: 34cqw;
   align-self: center;
   flex: 0 0 auto;
   min-width: 0;

@@ -147,7 +147,7 @@ export function BatchScreen() {
                       className="relative overflow-hidden rounded-sm border border-line-print"
                     >
                       <ShipLabel label={label} bare />
-                      <div className="no-print absolute bottom-1.5 right-1.5 flex gap-1">
+                      <div className="no-print absolute right-1.5 top-1.5 flex gap-1">
                         <button
                           type="button"
                           aria-label="Edit label"
