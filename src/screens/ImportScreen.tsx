@@ -4,7 +4,6 @@ import { useStore } from '../app/store';
 import { cn } from '../components/ui';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
-import { isInstalledApp } from '../lib/installWindow';
 
 /**
  * Upload screen.
@@ -78,8 +77,8 @@ export function ImportScreen() {
     <section
       className={cn(
         'mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center px-3 py-4 sm:px-5 sm:py-7',
-        // No header when installed → centre in the full viewport height.
-        isInstalledApp() ? 'min-h-dvh' : 'min-h-[calc(100dvh-56px)]',
+        // Centre the card in the space below the 56px header.
+        'min-h-[calc(100dvh-56px)]',
       )}
     >
       <div className="w-full max-w-[500px]">
