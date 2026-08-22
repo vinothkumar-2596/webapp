@@ -47,8 +47,16 @@ const PER_PAGE = COLS * ROWS; // 6
 
 const CONTENT_WIDTH = A4_WIDTH - MARGIN * 2;
 const CONTENT_HEIGHT = A4_HEIGHT - MARGIN * 2;
+
+// Height held back below the 3-row grid. Word adds per-cell margins and always
+// appends a paragraph after a table (the one that carries the section break),
+// so a grid sized to the full content height ends up a hair too tall — the
+// third row spills onto a second physical page and each sheet prints only 4
+// labels instead of 6. Reserving this slack keeps all three rows on one page.
+const GRID_RESERVE = 1700;
+
 const COL_WIDTH = Math.floor(CONTENT_WIDTH / COLS); // fixed cell width
-const ROW_HEIGHT = Math.floor(CONTENT_HEIGHT / ROWS); // fixed cell height
+const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed cell height
 
 const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: 'D0D5DD' } as const;
 
@@ -105,6 +113,19 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
 function labelCell({ label, qr }: Entry): TableCell {
   const children: Paragraph[] = [];
 
+  // QR on top, centred — then the recipient details beneath it.
+  if (qr) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [
+          new ImageRun({ type: 'png', data: qr, transformation: { width: 110, height: 110 } }),
+        ],
+      }),
+    );
+  }
+
   children.push(line(label.recipientName.value ?? 'No recipient name', { bold: true, size: 22 }));
 
   const place = [label.address.postalCode, label.address.city].filter(Boolean).join(' ');
@@ -119,26 +140,10 @@ function labelCell({ label, qr }: Entry): TableCell {
     children.push(line(phone, { bold: true }));
   }
 
-  if (label.orderNumber.value) {
-    children.push(line(label.orderNumber.value, { size: 16, font: 'Consolas' }));
-  }
-
-  if (qr) {
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.LEFT,
-        spacing: { before: 80 },
-        children: [
-          new ImageRun({ type: 'png', data: qr, transformation: { width: 88, height: 88 } }),
-        ],
-      }),
-    );
-  }
-
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
     verticalAlign: VerticalAlign.TOP,
-    margins: { top: 140, bottom: 140, left: 160, right: 160 },
+    margins: { top: 100, bottom: 100, left: 160, right: 160 },
     children,
   });
 }
@@ -206,7 +211,10 @@ export async function buildLabelsDocx(batch: Batch): Promise<Blob> {
     properties: {
       page: {
         size: { width: A4_WIDTH, height: A4_HEIGHT, orientation: PageOrientation.PORTRAIT },
-        margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+        // Keep header/footer distances well inside the page margin so Word
+        // doesn't reserve its default header/footer band and steal vertical
+        // space from the grid (which would push the third row off the page).
+        margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN, header: 283, footer: 283 },
       },
     },
     children: [pageTable(page)],

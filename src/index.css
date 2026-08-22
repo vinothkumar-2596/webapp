@@ -212,7 +212,8 @@
   border-radius: 4px;
   padding: 13px;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   font-family: Arial, Helvetica, sans-serif;
   color: #000;
   position: relative;
@@ -221,11 +222,42 @@
 }
 
 /* Inside the fixed A4 grid cells the cell draws the border, so the label
-   itself is borderless and fills the whole cell. */
+   itself is borderless and fills the whole cell. The block is centred so it
+   reads level in the tall cell instead of being crammed against the top edge.
+
+   Type, QR and spacing are sized in container units (cqw) relative to the
+   cell width, so the on-screen A4 preview is a faithful miniature of the
+   printed sheet — text always keeps ~70% of the width and never gets
+   crushed by the QR, at any cell size. */
 .ship-label--bare {
   border: 0;
   border-radius: 0;
   height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 3cqw;
+  padding: 6% 6%;
+  container-type: inline-size;
+}
+
+.ship-label--bare .ship-label__name {
+  margin-top: 0;
+  font-size: 5.4cqw;
+  line-height: 1.25;
+}
+
+.ship-label--bare .ship-label__addr {
+  font-size: 4.3cqw;
+  line-height: 1.45;
+  margin-top: 2cqw;
+}
+
+.ship-label--bare .ship-label__qr {
+  width: 52cqw;
+  align-self: center;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .ship-label__body {
@@ -275,18 +307,47 @@
   gap: 4px;
 }
 
-/* Sheet grid — column count driven by a CSS variable so the template
-   setting genuinely controls both screen and paper output. */
-.sheet-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--sheet-cols, 2), minmax(0, 1fr));
-  gap: 12px;
+/* ══════════════════════════════════════════════════════════════════
+   Fixed A4 print sheet
+   Every printed page is 2 columns × 3 rows = 6 equal cells. Label size
+   stays constant regardless of how many labels or pages there are; the
+   last sheet's unused cells print blank. Sized in millimetres for
+   physically accurate output. Lives in #print-root (display:none on screen).
+   ══════════════════════════════════════════════════════════════════ */
+.print-sheet {
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-@media (max-width: 640px) {
-  .sheet-grid {
-    grid-template-columns: 1fr;
-  }
+/* Each sheet after the first starts on a fresh physical page. */
+.print-sheet + .print-sheet {
+  break-before: page;
+  page-break-before: always;
+}
+
+.print-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4mm;
+  width: 100%;
+  height: 100%;
+}
+
+.print-cell {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #999;
+}
+
+.print-cell > .ship-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Unused trailing cells print blank, keeping the grid fixed. */
+.print-cell--empty {
+  border: 0;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -321,17 +382,15 @@
     display: none !important;
   }
 
-  /* Honour the selected column count on paper (fixes v1, which always
-     forced 2 columns regardless of the chosen layout). */
-  .sheet-grid {
-    grid-template-columns: repeat(var(--sheet-cols, 2), minmax(0, 1fr)) !important;
-    gap: 6mm !important;
-  }
-
   .ship-label {
-    border: 1px solid #999 !important;
     box-shadow: none !important;
     background: #fff !important;
+  }
+
+  /* A bare label sits inside a bordered print cell, so only free-standing
+     labels draw their own border — otherwise the cell double-borders. */
+  .ship-label:not(.ship-label--bare) {
+    border: 1px solid #999 !important;
   }
 
   /* Never carry a review warning onto a printed parcel — such labels are

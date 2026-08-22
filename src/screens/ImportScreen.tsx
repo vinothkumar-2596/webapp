@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
+import { AlertCircle, CloudUpload, FileText, Loader2, ShieldCheck, Upload } from 'lucide-react';
 import { useStore } from '../app/store';
 import { cn } from '../components/ui';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
@@ -9,8 +9,8 @@ import { isInstalledApp } from '../lib/installWindow';
 /**
  * Upload screen.
  *
- * A single card: muted header strip and a dashed drop zone with the emerald
- * call to action.
+ * A single, focused card: a titled header strip, a large dashed drop zone
+ * with the emerald call to action, and an on-device privacy note.
  *
  * The parsing underneath is unchanged — typed errors, cancellation and the
  * iOS fixes all stay.
@@ -82,23 +82,25 @@ export function ImportScreen() {
         isInstalledApp() ? 'min-h-dvh' : 'min-h-[calc(100dvh-56px)]',
       )}
     >
-      <div className="w-full max-w-[520px]">
-        <div className="overflow-hidden rounded-[18px] border border-[#e0e0de] bg-surface shadow-[0_4px_20px_rgba(0,0,0,0.07)]">
+      <div className="w-full max-w-[500px]">
+        <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.03),0_10px_28px_-18px_rgba(16,24,40,0.15)]">
           {/* Card header */}
-          <div className="flex items-center justify-between gap-2 border-b border-[#e8e8e6] bg-[#f9f9f7] px-4 py-3 sm:px-[22px] sm:py-3.5">
-            <div className="flex min-w-0 items-center gap-[7px]">
-              <FileText size={16} className="shrink-0 text-brand" />
-              <span className="font-display truncate text-[13px] font-bold text-[#111827] sm:text-[15px]">
+          <div className="flex items-center justify-between gap-3 border-b border-line-soft bg-surface-muted px-5 py-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ok-bg text-brand">
+                <FileText size={16} />
+              </span>
+              <span className="font-display truncate text-[14px] font-semibold text-ink sm:text-[15px]">
                 Upload Amazon Packing Slip PDF
               </span>
             </div>
-            <span className="shrink-0 rounded-full border border-[#e0e0de] bg-surface px-2.5 py-0.5 text-[10px] font-bold text-[#6b7280]">
+            <span className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold tracking-wide text-ink-4">
               Vape de France
             </span>
           </div>
 
           {/* Drop zone */}
-          <div className="px-4 pt-3.5 pb-[18px] sm:px-[22px] sm:pt-[18px] sm:pb-[22px]">
+          <div className="p-4 sm:p-6">
             <input
               ref={inputRef}
               type="file"
@@ -122,18 +124,20 @@ export function ImportScreen() {
                 if (!busy) void handleFile(event.dataTransfer.files?.[0]);
               }}
               className={cn(
-                'flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors sm:px-5 sm:py-8',
+                'group flex w-full flex-col items-center gap-3.5 rounded-md border-2 border-dashed px-5 py-10 text-center transition-colors sm:py-12',
                 busy ? 'cursor-default' : 'cursor-pointer',
-                dragging ? 'border-brand bg-[#f0fdf4]' : 'border-[#c8c8c6] bg-[#f9f9f7]',
+                dragging
+                  ? 'border-brand bg-ok-bg'
+                  : 'border-line bg-surface-muted hover:border-brand hover:bg-ok-bg',
               )}
             >
               {busy ? (
                 <>
-                  <Loader2 size={36} className="animate-spin text-brand" />
-                  <span className="m-0 text-[13px] font-bold text-[#111827]">
+                  <Loader2 size={30} className="animate-spin text-brand" />
+                  <span className="font-display text-[15px] font-semibold text-ink">
                     Parsing PDF &amp; building labels…
                   </span>
-                  <span className="m-0 font-mono text-[11px] text-[#9ca3af]">
+                  <span className="font-mono text-[11px] text-ink-5">
                     {phase.kind === 'parsing' && phase.total > 0
                       ? `Page ${phase.page} of ${phase.total}`
                       : 'Reading the document…'}
@@ -141,18 +145,15 @@ export function ImportScreen() {
                 </>
               ) : (
                 <>
-                  <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] border border-[#e0e0de] bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.06)] sm:h-[60px] sm:w-[60px]">
-                    <Upload size={24} className="text-brand" />
-                  </span>
+                  <CloudUpload size={30} className="text-brand" />
                   <span className="block">
-                    <span className="font-display mb-[3px] block text-[14px] font-extrabold text-[#111827] sm:text-[15px]">
+                    <span className="font-display block text-[15.5px] font-semibold text-ink">
                       {dragging ? 'Release to upload' : 'Drop your Amazon PDF here'}
                     </span>
-                    <span className="hidden text-[12px] text-[#9ca3af] sm:block">
-                      or click to browse files
-                    </span>
+                    <span className="mt-1 block text-[12.5px] text-ink-5">or click to browse</span>
                   </span>
-                  <span className="w-full rounded-[10px] bg-brand px-8 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)] sm:w-auto sm:text-[14px]">
+                  <span className="mt-0.5 inline-flex items-center justify-center gap-2 rounded-md bg-brand px-6 py-2.5 text-[13.5px] font-semibold text-white transition-colors group-hover:bg-brand-hover">
+                    <Upload size={15} />
                     Upload PDF
                   </span>
                 </>
@@ -166,7 +167,7 @@ export function ImportScreen() {
                   abortRef.current?.abort();
                   setPhase({ kind: 'idle' });
                 }}
-                className="mt-3 w-full cursor-pointer rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] py-2 text-[12.5px] font-semibold text-[#6b7280] hover:text-ink"
+                className="mt-3 w-full cursor-pointer rounded-md border border-line bg-surface-muted py-2 text-[12.5px] font-semibold text-ink-4 transition-colors hover:text-ink"
               >
                 Cancel
               </button>
@@ -178,7 +179,8 @@ export function ImportScreen() {
           </div>
         </div>
 
-        <p className="mt-3 mb-0 text-center text-[11px] text-[#9ca3af]">
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11.5px] text-ink-5">
+          <ShieldCheck size={13} className="shrink-0" />
           Parsed on this device — no customer address is uploaded.
         </p>
       </div>
@@ -190,7 +192,7 @@ function ErrorBox({ error, onRetry }: { error: PdfError; onRetry: () => void }) 
   const { title, message, hints, code } = error.detail;
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border-[1.5px] border-bad-line">
+    <div className="mt-3 overflow-hidden rounded-md border-[1.5px] border-bad-line">
       <div className="flex items-center gap-2 bg-bad-bg px-3.5 py-2.5">
         <AlertCircle size={15} className="shrink-0 text-bad-icon" />
         <span className="font-display text-[13px] font-bold text-bad-fg">{title}</span>
@@ -199,12 +201,12 @@ function ErrorBox({ error, onRetry }: { error: PdfError; onRetry: () => void }) 
       </div>
 
       <div className="bg-surface px-3.5 py-3">
-        <p className="m-0 text-[12px] leading-relaxed text-[#374151]">{message}</p>
+        <p className="m-0 text-[12px] leading-relaxed text-ink-2">{message}</p>
 
         {hints.length > 0 ? (
           <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
             {hints.map((hint) => (
-              <li key={hint} className="flex gap-2 text-[11.5px] leading-[1.5] text-[#6b7280]">
+              <li key={hint} className="flex gap-2 text-[11.5px] leading-[1.5] text-ink-4">
                 <span className="text-bad-icon">·</span>
                 <span>{hint}</span>
               </li>
@@ -213,7 +215,7 @@ function ErrorBox({ error, onRetry }: { error: PdfError; onRetry: () => void }) 
         ) : null}
 
         {error.diagnostic ? (
-          <p className="mt-2 mb-0 break-words font-mono text-[10px] leading-snug text-[#9ca3af]">
+          <p className="mt-2 mb-0 break-words font-mono text-[10px] leading-snug text-ink-5">
             {error.diagnostic}
           </p>
         ) : null}
@@ -221,7 +223,7 @@ function ErrorBox({ error, onRetry }: { error: PdfError; onRetry: () => void }) 
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 w-full cursor-pointer rounded-[10px] border-0 bg-brand py-2.5 text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)] hover:bg-brand-hover"
+          className="mt-3 w-full cursor-pointer rounded-md border-0 bg-brand py-2.5 text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)] hover:bg-brand-hover"
         >
           Try another file
         </button>

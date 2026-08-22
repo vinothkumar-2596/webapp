@@ -21,6 +21,9 @@ export function ShipLabel({
    *  the fixed A4 grid cells, where the cell provides the border. */
   bare?: boolean;
 }) {
+  // Non-bare uses render at a fixed pixel size. Bare labels (the fixed A4
+  // cells) scale their QR to the cell width via CSS container units instead,
+  // so the on-screen preview and the printed sheet stay proportional.
   const qrPx = size === 'preview' ? 78 : 62;
   const blocked = isBlocked(label);
 
@@ -42,6 +45,46 @@ export function ShipLabel({
       className={bare ? 'ship-label ship-label--bare' : 'ship-label'}
       style={{ minHeight: size === 'preview' || bare ? undefined : 150 }}
     >
+      <div className="ship-label__qr" style={bare ? undefined : { flexBasis: qrPx }}>
+        {order ? (
+          <QRCodeSVG
+            value={order}
+            size={bare ? 160 : qrPx}
+            level="M"
+            marginSize={1}
+            fgColor="#000000"
+            bgColor="#FFFFFF"
+            style={
+              bare
+                ? { display: 'block', width: '100%', height: 'auto' }
+                : { display: 'block', width: qrPx, height: qrPx }
+            }
+          />
+        ) : (
+          // No order number means no QR. v1 encoded a fabricated number here,
+          // producing a scannable code that pointed at a non-existent order.
+          <div
+            style={{
+              width: bare ? '100%' : qrPx,
+              aspectRatio: bare ? '1 / 1' : undefined,
+              height: bare ? undefined : qrPx,
+              border: '1px dashed #b42318',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#b42318',
+              fontSize: 8,
+              textAlign: 'center',
+              lineHeight: 1.25,
+              padding: 4,
+            }}
+          >
+            No order number
+          </div>
+        )}
+      </div>
+
       <div className="ship-label__body">
         <div className="ship-label__name">
           {name ?? <MissingInline>No recipient name</MissingInline>}
@@ -64,41 +107,6 @@ export function ShipLabel({
             {label.phoneIsMobile ? `N° portable : ${label.phone.value}` : label.phone.value}
           </div>
         ) : null}
-      </div>
-
-      <div className="ship-label__qr" style={{ flexBasis: qrPx }}>
-        {order ? (
-          <QRCodeSVG
-            value={order}
-            size={qrPx}
-            level="M"
-            marginSize={1}
-            fgColor="#000000"
-            bgColor="#FFFFFF"
-            style={{ display: 'block', width: qrPx, height: qrPx }}
-          />
-        ) : (
-          // No order number means no QR. v1 encoded a fabricated number here,
-          // producing a scannable code that pointed at a non-existent order.
-          <div
-            style={{
-              width: qrPx,
-              height: qrPx,
-              border: '1px dashed #b42318',
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#b42318',
-              fontSize: 8,
-              textAlign: 'center',
-              lineHeight: 1.25,
-              padding: 4,
-            }}
-          >
-            No order number
-          </div>
-        )}
       </div>
 
       {blocked ? (
