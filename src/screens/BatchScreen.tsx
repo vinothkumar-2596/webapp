@@ -127,7 +127,7 @@ export function BatchScreen() {
                 A4 page {pageIdx + 1} of {pages.length}
               </div>
               {/* An A4-proportioned sheet: a fixed 2×3 grid of 6 cells. */}
-              <div className="mx-auto grid aspect-[210/297] w-full max-w-[540px] grid-cols-2 grid-rows-3 gap-[2.5%] rounded-md border border-line bg-white p-[2.5%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
+              <div className="mx-auto grid aspect-[210/297] w-full max-w-[760px] grid-cols-2 grid-rows-3 gap-[2.5%] rounded-md border border-line bg-white p-[2.5%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
                 {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
                   const label = pageLabels[cellIdx];
                   if (!label) {
