@@ -127,7 +127,7 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex flex-col gap-1">
       <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-4">
         {label}
       </span>
@@ -146,7 +146,7 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
     <input
       {...rest}
       className={cn(
-        'h-9 w-full rounded-md border border-line bg-surface-muted px-3',
+        'h-8 w-full rounded-md border border-line bg-surface-muted px-3',
         'text-[13px] text-ink outline-none',
         'focus:border-brand focus:bg-surface',
         'aria-[invalid=true]:border-bad-line aria-[invalid=true]:bg-bad-bg',

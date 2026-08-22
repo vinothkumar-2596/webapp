@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useState } from 'react';
-import { X, Check, Plus } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { X, Check, Plus, AlertTriangle } from 'lucide-react';
 import { Button, Field, Input, Select, cn } from './ui';
 import { allCountryNames } from '../lib/pdf/countries';
 import { isValidOrderNumber } from '../lib/pdf/parseSlip';
@@ -189,12 +189,12 @@ export function EditLabelDialog({
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-[min(560px,calc(100vw-32px))]',
             '-translate-x-1/2 -translate-y-1/2',
-            'max-h-[90dvh] overflow-y-auto rounded-xl border border-line bg-surface shadow-2xl',
+            'max-h-[90dvh] overflow-y-auto rounded-lg border border-line bg-surface shadow-2xl',
           )}
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface-muted px-5 py-3.5">
-            <div>
-              <Dialog.Title className="m-0 text-[14px] font-semibold">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-line bg-surface-muted px-5 py-3">
+            <div className="min-w-0">
+              <Dialog.Title className="m-0 text-[14px] font-semibold text-ink">
                 Edit label · page {label.pageNumber}
               </Dialog.Title>
               <Dialog.Description className="m-0 mt-0.5 text-[11.5px] text-ink-4">
@@ -205,7 +205,7 @@ export function EditLabelDialog({
               <button
                 type="button"
                 aria-label="Close"
-                className="cursor-pointer rounded-md border-0 bg-transparent p-1 text-ink-5 hover:text-ink"
+                className="-mr-1 shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-ink-5 hover:text-ink"
               >
                 <X size={18} />
               </button>
@@ -213,21 +213,32 @@ export function EditLabelDialog({
           </div>
 
           {outstanding.length > 0 ? (
-            <div className="border-b border-warn-line bg-warn-bg px-5 py-3">
-              <p className="m-0 text-[12px] font-semibold text-warn-fg">
-                This label needs attention
-              </p>
-              <ul className="m-0 mt-1.5 list-none space-y-1 p-0">
-                {outstanding.map((r) => (
-                  <li key={r} className="text-[11.5px] leading-snug text-warn-fg">
-                    · {REVIEW_REASON_TEXT[r]}
-                  </li>
-                ))}
-              </ul>
+            <div className="flex gap-2.5 border-b border-warn-line bg-warn-bg px-5 py-2.5">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warn-icon" />
+              <div className="min-w-0">
+                <p className="m-0 text-[12px] font-semibold text-warn-fg">
+                  This label needs attention
+                </p>
+                <ul className="m-0 mt-1.5 list-none space-y-1 p-0">
+                  {outstanding.map((r) => (
+                    <li
+                      key={r}
+                      className="flex gap-1.5 text-[11.5px] leading-snug text-warn-fg"
+                    >
+                      <span aria-hidden className="text-warn-icon">
+                        ·
+                      </span>
+                      <span>{REVIEW_REASON_TEXT[r]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3.5 px-5 py-4">
+          <div className="flex flex-col gap-2.5 px-5 py-3">
+            <SectionLabel>Recipient &amp; address</SectionLabel>
+
             <Field label="Recipient name" error={nameError}>
               <Input
                 value={form.recipientName}
@@ -242,7 +253,7 @@ export function EditLabelDialog({
               <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-4">
                 Address lines
               </span>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 {form.addressLines.map((value, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input
@@ -291,7 +302,7 @@ export function EditLabelDialog({
 
             <Field label="Country" hint="Required — never assumed from the address">
               <Select
-                className="h-9 w-full"
+                className="h-8 w-full"
                 value={form.country}
                 onChange={(e) => set('country')(e.target.value)}
               >
@@ -303,6 +314,8 @@ export function EditLabelDialog({
                 ))}
               </Select>
             </Field>
+
+            <SectionLabel>Order &amp; contact</SectionLabel>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Order number" error={orderError} hint="Encoded in the QR code">
@@ -318,6 +331,8 @@ export function EditLabelDialog({
                 <Input value={form.phone} onChange={(e) => set('phone')(e.target.value)} />
               </Field>
             </div>
+
+            <SectionLabel note="optional">Product details</SectionLabel>
 
             <div className="grid grid-cols-3 gap-3">
               <Field label="SKU">
@@ -340,7 +355,7 @@ export function EditLabelDialog({
             </Field>
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-line bg-surface-muted px-5 py-3">
+          <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-line bg-surface-muted px-5 py-3">
             <Dialog.Close asChild>
               <Button variant="secondary">Cancel</Button>
             </Dialog.Close>
@@ -351,5 +366,20 @@ export function EditLabelDialog({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/** A section divider: a small heading with an optional chip and a hairline. */
+function SectionLabel({ children, note }: { children: ReactNode; note?: string }) {
+  return (
+    <div className="mt-1 flex items-center gap-2.5 first:mt-0">
+      <span className="shrink-0 text-[12px] font-semibold text-ink">{children}</span>
+      {note ? (
+        <span className="shrink-0 rounded bg-canvas px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-5">
+          {note}
+        </span>
+      ) : null}
+      <span className="h-px flex-1 bg-line-soft" />
+    </div>
   );
 }
