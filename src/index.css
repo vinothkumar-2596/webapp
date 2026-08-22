@@ -235,9 +235,9 @@
   height: 100%;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
-  gap: 2cqw;
-  padding: 5% 6%;
+  justify-content: center;
+  gap: 3cqw;
+  padding: 6% 7%;
   container-type: inline-size;
 }
 
