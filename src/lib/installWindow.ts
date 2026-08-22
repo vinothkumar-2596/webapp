@@ -16,7 +16,7 @@
 const TARGET_WIDTH = 600;
 const TARGET_HEIGHT = 760;
 
-function isInstalledApp(): boolean {
+export function isInstalledApp(): boolean {
   const mm = window.matchMedia?.bind(window);
   if (mm) {
     if (

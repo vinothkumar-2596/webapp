@@ -4,6 +4,7 @@ import { useStore } from '../app/store';
 import { cn } from '../components/ui';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
+import { isInstalledApp } from '../lib/installWindow';
 
 /**
  * Upload screen, in the original v1 presentation.
@@ -81,7 +82,13 @@ export function ImportScreen() {
   const busy = phase.kind === 'parsing';
 
   return (
-    <section className="mx-auto flex min-h-[calc(100dvh-56px)] w-full max-w-[1280px] flex-col items-center justify-center px-3 py-4 sm:px-5 sm:py-7">
+    <section
+      className={cn(
+        'mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center px-3 py-4 sm:px-5 sm:py-7',
+        // No header when installed → centre in the full viewport height.
+        isInstalledApp() ? 'min-h-dvh' : 'min-h-[calc(100dvh-56px)]',
+      )}
+    >
       <div className="w-full max-w-[520px]">
         <div className="overflow-hidden rounded-[18px] border border-[#e0e0de] bg-surface shadow-[0_4px_20px_rgba(0,0,0,0.07)]">
           {/* Card header */}
