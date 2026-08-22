@@ -138,6 +138,14 @@ describe('phone', () => {
     expect(parse(F.FR_LONG_ADDRESS).phone.value).toContain('+33');
   });
 
+  it('flags a "N° portable" line as mobile', () => {
+    expect(parse(F.FR_STANDARD).phoneIsMobile).toBe(true);
+  });
+
+  it('does not flag a generic "Téléphone" line as mobile', () => {
+    expect(parse(F.FR_LONG_ADDRESS).phoneIsMobile).toBe(false);
+  });
+
   it('returns missing rather than a junk value', () => {
     expect(parse(F.NO_ANCHOR).phone.value).toBeNull();
     expect(extractPhone('Tél : 12').value).toBeNull(); // too short

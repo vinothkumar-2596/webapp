@@ -102,7 +102,7 @@ export function BatchScreen() {
   return (
     <div className="mx-auto max-w-[1060px]">
       {/* Only the labels that pass verification are rendered into the print root. */}
-      <PrintSheet labels={toPrint} settings={settings} batchRef={activeBatch.ref} />
+      <PrintSheet labels={toPrint} settings={settings} />
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
@@ -403,12 +403,7 @@ export function BatchScreen() {
             {activeLabel ? (
               <>
                 <div className="bg-surface-sunken px-4 py-4.5">
-                  <ShipLabel
-                    label={activeLabel}
-                    settings={settings}
-                    batchRef={activeBatch.ref}
-                    size="preview"
-                  />
+                  <ShipLabel label={activeLabel} size="preview" />
                 </div>
 
                 {activeLabel.reviewReasons.length > 0 && !activeLabel.reviewed ? (
@@ -482,12 +477,7 @@ export function BatchScreen() {
                 style={{ ['--sheet-cols' as string]: String(settings.labelsPerRow) }}
               >
                 {toPrint.map((label) => (
-                  <ShipLabel
-                    key={label.id}
-                    label={label}
-                    settings={settings}
-                    batchRef={activeBatch.ref}
-                  />
+                  <ShipLabel key={label.id} label={label} />
                 ))}
               </div>
             )}

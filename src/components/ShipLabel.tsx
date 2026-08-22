@@ -1,5 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
-import type { Label, TemplateSettings } from '../lib/types';
+import type { Label } from '../lib/types';
 import { isBlocked } from '../lib/types';
 
 /**
@@ -12,13 +12,9 @@ import { isBlocked } from '../lib/types';
  */
 export function ShipLabel({
   label,
-  settings,
-  batchRef,
   size = 'normal',
 }: {
   label: Label;
-  settings: TemplateSettings;
-  batchRef: string;
   size?: 'normal' | 'preview';
 }) {
   const qrPx = size === 'preview' ? 78 : 62;
@@ -40,8 +36,6 @@ export function ShipLabel({
   return (
     <div className="ship-label" style={{ minHeight: size === 'preview' ? undefined : 150 }}>
       <div className="ship-label__body">
-        <div className="ship-label__eyebrow">Ship to</div>
-
         <div className="ship-label__name">
           {name ?? <MissingInline>No recipient name</MissingInline>}
         </div>
@@ -60,17 +54,9 @@ export function ShipLabel({
 
         {label.phone.value ? (
           <div className="ship-label__addr" style={{ fontWeight: 700 }}>
-            {label.phone.value}
+            {label.phoneIsMobile ? `N° portable : ${label.phone.value}` : label.phone.value}
           </div>
         ) : null}
-
-        <div className="ship-label__rule" />
-
-        <div className="ship-label__meta">
-          {order ?? <MissingInline>No order number</MissingInline>}
-          {label.product.quantity !== null ? ` · ${label.product.quantity} items` : ''}
-          {settings.includeBatchRef ? ` · ${batchRef}` : ''}
-        </div>
       </div>
 
       <div className="ship-label__qr" style={{ flexBasis: qrPx }}>

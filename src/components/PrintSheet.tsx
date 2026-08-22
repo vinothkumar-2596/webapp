@@ -17,11 +17,9 @@ import type { Label, TemplateSettings } from '../lib/types';
 export function PrintSheet({
   labels,
   settings,
-  batchRef,
 }: {
   labels: Label[];
   settings: TemplateSettings;
-  batchRef: string;
 }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
 
@@ -50,7 +48,7 @@ export function PrintSheet({
       style={{ ['--sheet-cols' as string]: String(settings.labelsPerRow) }}
     >
       {labels.map((label) => (
-        <ShipLabel key={label.id} label={label} settings={settings} batchRef={batchRef} />
+        <ShipLabel key={label.id} label={label} />
       ))}
     </div>,
     host,

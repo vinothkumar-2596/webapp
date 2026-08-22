@@ -131,7 +131,7 @@ export function TemplateScreen() {
           <Card>
             <CardHeader title="Live preview" />
             <div className="bg-surface-sunken px-4 py-4.5">
-              <ShipLabel label={SAMPLE} settings={settings} batchRef="B-2847" size="preview" />
+              <ShipLabel label={SAMPLE} size="preview" />
             </div>
             <div className="border-t border-line px-4 py-3.5 text-[11.5px] leading-relaxed text-ink-5">
               Sample data — no customer information is shown here.

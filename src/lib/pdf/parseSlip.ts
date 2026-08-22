@@ -33,6 +33,9 @@ const ORDER_BARE = /\b(\d{3}-\d{7}-\d{7})\b/;
 const PHONE_ANCHORED =
   /(?:n[°ºo]\s*(?:de\s*)?portable|t[ée]l[ée]phone|phone|tel|mobile|gsm)\s*[:.\-]?\s*((?:\+\d{1,3}[\s.]?)?[\d][\d\s.()\-]{6,18}\d)/i;
 
+/** The subset of phone labels that mean a mobile/portable line. */
+const PHONE_MOBILE_LABEL = /n[°ºo]\s*(?:de\s*)?portable|mobile|gsm/i;
+
 /** Ship-to block anchors, in priority order. */
 const SHIP_TO_ANCHOR =
   /(?:adresse\s+de\s+livraison|adresse\s+d['’]exp[ée]dition|shipping\s+address|ship\s*to|deliver\s+to|livrer\s+[àa])\s*:?\s*$/i;
@@ -205,6 +208,7 @@ export function parseSlip(page: PageText): Label {
 
   const orderNumber = extractOrderNumber(raw);
   const phone = extractPhone(raw);
+  const phoneIsMobile = phone.value !== null && PHONE_MOBILE_LABEL.test(raw);
   const product = extractProduct(raw, lines);
 
   const { block, confidence: addrConfidence } = findAddressBlock(lines);
@@ -269,6 +273,7 @@ export function parseSlip(page: PageText): Label {
     recipientName,
     address: { lines: streetLines, postalCode, city, country },
     phone,
+    phoneIsMobile,
     orderNumber,
     product,
     reviewReasons,

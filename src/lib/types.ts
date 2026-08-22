@@ -115,6 +115,13 @@ export const Label = z.object({
   recipientName: StringField,
   address: Address,
   phone: StringField,
+  /**
+   * True when the slip labelled the phone as a mobile/portable line
+   * (e.g. "N° portable", "GSM"). Drives whether the printed label shows
+   * the "N° portable :" prefix. Optional so labels parsed before this
+   * field existed still validate.
+   */
+  phoneIsMobile: z.boolean().optional(),
   orderNumber: StringField,
   product: ProductDetails,
 
