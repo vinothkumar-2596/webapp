@@ -236,27 +236,35 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 3cqw;
+  gap: 2.5cqw;
   padding: 6% 7%;
   container-type: inline-size;
 }
 
+/* Natural-height block. The base rule sets flex:1 for the old side-by-side
+   layout; in this column layout that stretches the body and shoves the text
+   to the top, so longer addresses overrun the cell and clip. Letting the
+   block size to its content keeps the QR + address centred and fully visible. */
+.ship-label--bare .ship-label__body {
+  flex: 0 0 auto;
+}
+
 .ship-label--bare .ship-label__name {
   margin-top: 0;
-  font-size: 5cqw;
-  line-height: 1.25;
+  font-size: 4.6cqw;
+  line-height: 1.2;
 }
 
 .ship-label--bare .ship-label__addr {
-  font-size: 4cqw;
-  line-height: 1.4;
-  margin-top: 1.5cqw;
+  font-size: 3.7cqw;
+  line-height: 1.38;
+  margin-top: 1.4cqw;
 }
 
-/* Match the Word file: the QR is ~34% of the cell width, leaving the rest
-   of the height for the name/address so nothing clips. */
+/* QR ~28% of the cell width — big enough to scan, small enough that even a
+   long, multi-line address still fits the cell height without clipping. */
 .ship-label--bare .ship-label__qr {
-  width: 34cqw;
+  width: 28cqw;
   align-self: center;
   flex: 0 0 auto;
   min-width: 0;
