@@ -142,7 +142,9 @@ function labelCell({ label, qr }: Entry): TableCell {
 
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
-    // Centre the QR + details in the cell, matching the on-screen preview.
+    // Same concept as the web / A4 preview: the QR + details block is centred
+    // vertically in the cell (justify-content: center on screen == vAlign
+    // center here), the QR centred on top, the address left-aligned beneath.
     verticalAlign: VerticalAlign.CENTER,
     margins: { top: 100, bottom: 100, left: 160, right: 160 },
     children,
