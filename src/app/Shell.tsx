@@ -1,23 +1,19 @@
-import { useState, type ReactNode } from 'react';
-import { QrCode, Settings as SettingsIcon, ShoppingBag } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { QrCode, ShoppingBag } from 'lucide-react';
 import { useStore } from './store';
-import { SettingsDialog } from '../components/SettingsDialog';
 
 /**
- * Header — just the brand/logo block, no nav bar. Clicking the logo returns to
- * the upload screen; a small settings gear sits on the right so the (compact)
- * settings stay reachable.
+ * Header — the brand/logo block only. No nav bar and no settings gear here;
+ * Settings lives in the upload card's header bar (and can be reached from the
+ * home/upload screen). Clicking the logo returns to the upload screen.
  */
 export function Shell({ children }: { children: ReactNode }) {
   const { screen, navigate } = useStore();
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-
       <header className="sticky top-0 z-30 border-b border-[#e0e0de] bg-surface shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-        <div className="mx-auto flex h-14 max-w-[900px] items-center justify-between gap-2 px-4">
+        <div className="mx-auto flex h-14 max-w-[900px] items-center px-4">
           {/* Brand / logo */}
           <button
             type="button"
@@ -42,16 +38,6 @@ export function Shell({ children }: { children: ReactNode }) {
                 Amazon PDF → QR Shipping Labels
               </span>
             </span>
-          </button>
-
-          <button
-            type="button"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => setSettingsOpen(true)}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[#e5e7eb] bg-[#f9fafb] text-[#6b7280] transition-colors hover:bg-white hover:text-ink"
-          >
-            <SettingsIcon size={15} />
           </button>
         </div>
       </header>

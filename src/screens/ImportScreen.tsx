@@ -2,8 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 import { AlertCircle, CloudUpload, FileText, Loader2, ShieldCheck, Upload } from 'lucide-react';
 import { useStore } from '../app/store';
 import { cn } from '../components/ui';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { PdfError, toPdfError } from '../lib/pdf/errors';
 import { nextSequence } from '../lib/storage';
+import { SettingsDialog } from '../components/SettingsDialog';
 
 /**
  * Upload screen.
@@ -24,6 +26,7 @@ export function ImportScreen() {
   const { dispatch, settings } = useStore();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [dragging, setDragging] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -81,6 +84,7 @@ export function ImportScreen() {
         'min-h-[calc(100dvh-56px)]',
       )}
     >
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <div className="w-full max-w-[500px]">
         <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.03),0_10px_28px_-18px_rgba(16,24,40,0.15)]">
           {/* Card header */}
@@ -93,9 +97,20 @@ export function ImportScreen() {
                 Upload Amazon Packing Slip PDF
               </span>
             </div>
-            <span className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold tracking-wide text-ink-4">
-              Vape de France
-            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label="Settings"
+                title="Settings"
+                onClick={() => setSettingsOpen(true)}
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-line bg-surface text-ink-4 transition-colors hover:text-ink"
+              >
+                <SettingsIcon size={14} />
+              </button>
+              <span className="rounded-md border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold tracking-wide text-ink-4">
+                Vape de France
+              </span>
+            </div>
           </div>
 
           {/* Drop zone */}
