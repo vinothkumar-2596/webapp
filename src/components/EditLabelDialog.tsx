@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useEffect, useState } from 'react';
-import { X, Check } from 'lucide-react';
-import { Button, Field, Input, Textarea, Select, cn } from './ui';
+import { useState } from 'react';
+import { X, Check, Plus } from 'lucide-react';
+import { Button, Field, Input, Select, cn } from './ui';
 import { allCountryNames } from '../lib/pdf/countries';
 import { isValidOrderNumber } from '../lib/pdf/parseSlip';
 import type { Label, ReviewReason } from '../lib/types';
@@ -9,7 +9,8 @@ import { REVIEW_REASON_TEXT } from '../lib/types';
 
 interface Form {
   recipientName: string;
-  addressLines: string;
+  /** Each street/building line as its own input, not one combined field. */
+  addressLines: string[];
   postalCode: string;
   city: string;
   country: string;
@@ -24,7 +25,8 @@ interface Form {
 function toForm(label: Label): Form {
   return {
     recipientName: label.recipientName.value ?? '',
-    addressLines: label.address.lines.join('\n'),
+    // Always keep at least one input so there is a field to type into.
+    addressLines: label.address.lines.length > 0 ? [...label.address.lines] : [''],
     postalCode: label.address.postalCode ?? '',
     city: label.address.city ?? '',
     country: label.address.country.value ?? '',
@@ -36,6 +38,21 @@ function toForm(label: Label): Form {
     quantity: label.product.quantity !== null ? String(label.product.quantity) : '',
   };
 }
+
+/** A valid, empty form so `form` is never null before a label is opened. */
+const EMPTY_FORM: Form = {
+  recipientName: '',
+  addressLines: [''],
+  postalCode: '',
+  city: '',
+  country: '',
+  phone: '',
+  orderNumber: '',
+  sku: '',
+  asin: '',
+  title: '',
+  quantity: '',
+};
 
 /**
  * Edit dialog.
@@ -59,22 +76,46 @@ export function EditLabelDialog({
   onOpenChange: (open: boolean) => void;
   onSave: (patch: Partial<Label>) => void;
 }) {
-  const [form, setForm] = useState<Form>(() =>
-    label ? toForm(label) : (Object.create(null) as Form),
-  );
+  const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [touched, setTouched] = useState(false);
+  const [openedId, setOpenedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (label) {
-      setForm(toForm(label));
-      setTouched(false);
-    }
-  }, [label]);
+  // Seed the form from the label during render, the moment a (different) label
+  // is opened — so the very first paint already has its data. A lazy useState
+  // initialiser can't do this: the dialog is mounted (with label = null) long
+  // before any label is chosen, and reading form.* on that first open would
+  // otherwise throw on an empty form.
+  if (label && label.id !== openedId) {
+    setOpenedId(label.id);
+    setForm(toForm(label));
+    setTouched(false);
+  } else if (!label && openedId !== null) {
+    // Closed — let the next open (even of the same label) re-seed fresh data,
+    // discarding any edits that were cancelled rather than saved.
+    setOpenedId(null);
+  }
 
   if (!label) return null;
 
   const set = (key: keyof Form) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Each address line is edited independently.
+  const setLine = (index: number, value: string) =>
+    setForm((f) => {
+      const addressLines = f.addressLines.slice();
+      addressLines[index] = value;
+      return { ...f, addressLines };
+    });
+
+  const addLine = () =>
+    setForm((f) => ({ ...f, addressLines: [...f.addressLines, ''] }));
+
+  const removeLine = (index: number) =>
+    setForm((f) => {
+      const addressLines = f.addressLines.filter((_, i) => i !== index);
+      return { ...f, addressLines: addressLines.length > 0 ? addressLines : [''] };
+    });
 
   const orderError =
     touched && form.orderNumber.trim() !== '' && !isValidOrderNumber(form.orderNumber)
@@ -91,10 +132,7 @@ export function EditLabelDialog({
     setTouched(true);
     if (!canSave) return;
 
-    const lines = form.addressLines
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
+    const lines = form.addressLines.map((l) => l.trim()).filter(Boolean);
 
     const order = form.orderNumber.trim();
     const country = form.country.trim();
@@ -199,13 +237,45 @@ export function EditLabelDialog({
               />
             </Field>
 
-            <Field label="Address lines" hint="One line per row, street and building only">
-              <Textarea
-                rows={3}
-                value={form.addressLines}
-                onChange={(e) => set('addressLines')(e.target.value)}
-              />
-            </Field>
+            {/* Address lines — each on its own input, not a single textarea. */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-4">
+                Address lines
+              </span>
+              <div className="flex flex-col gap-2">
+                {form.addressLines.map((value, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={value}
+                      onChange={(e) => setLine(i, e.target.value)}
+                      placeholder={i === 0 ? 'Street address' : `Address line ${i + 1}`}
+                    />
+                    {form.addressLines.length > 1 ? (
+                      <button
+                        type="button"
+                        aria-label={`Remove address line ${i + 1}`}
+                        title="Remove line"
+                        onClick={() => removeLine(i)}
+                        className="shrink-0 cursor-pointer rounded-md border border-line bg-surface p-2 text-ink-5 hover:text-bad-fg"
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addLine}
+                className="mt-0.5 inline-flex w-fit cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] font-semibold text-brand hover:text-brand-hover"
+              >
+                <Plus size={13} />
+                Add line
+              </button>
+              <span className="text-[11.5px] text-ink-5">
+                Street and building only — postal code, city and country are separate below.
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Postal code">

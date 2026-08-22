@@ -1,9 +1,7 @@
 import { StoreProvider, useStore } from './store';
 import { Shell } from './Shell';
-import { OverviewScreen } from '../screens/OverviewScreen';
 import { ImportScreen } from '../screens/ImportScreen';
 import { BatchScreen } from '../screens/BatchScreen';
-import { TemplateScreen } from '../screens/TemplateScreen';
 
 function Screens() {
   const { screen, ready } = useStore();
@@ -12,14 +10,10 @@ function Screens() {
   if (!ready) return null;
 
   switch (screen) {
-    case 'overview':
-      return <OverviewScreen />;
     case 'import':
       return <ImportScreen />;
     case 'batches':
       return <BatchScreen />;
-    case 'template':
-      return <TemplateScreen />;
   }
 }
 

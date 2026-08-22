@@ -9,6 +9,11 @@ import '@fontsource/outfit/latin-800.css';
 import '@fontsource/outfit/latin-900.css';
 import './index.css';
 import App from './app/App';
+import { fitInstalledWindow } from './lib/installWindow';
+
+// When launched as an installed app, open in a small, single-purpose window.
+// No-op in a normal browser tab.
+fitInstalledWindow();
 
 // No polyfill import here on purpose: pdf.js is loaded from `pdfjs-dist/legacy/*`,
 // which installs core-js polyfills into both the main thread and the worker.

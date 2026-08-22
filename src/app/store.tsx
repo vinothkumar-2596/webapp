@@ -15,7 +15,7 @@ import {
 } from '../lib/types';
 import { loadBatches, loadSettings, saveBatches, saveSettings } from '../lib/storage';
 
-export type Screen = 'overview' | 'batches' | 'import' | 'template';
+export type Screen = 'import' | 'batches';
 
 interface State {
   ready: boolean;

@@ -1,0 +1,116 @@
+import { describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
+import { buildLabelsDocx } from './exportDocx';
+import type { Batch, Label } from '../types';
+
+function makeLabel(page: number, name: string, order: string | null): Label {
+  return {
+    id: `l${page}`,
+    pageNumber: page,
+    recipientName: { value: name, confidence: 'high' },
+    address: {
+      lines: [`${page} Rue de Test`],
+      postalCode: '75001',
+      city: 'Paris',
+      country: { value: 'France', confidence: 'high' },
+    },
+    phone: { value: '0612345678', confidence: 'high' },
+    orderNumber: order ? { value: order, confidence: 'high' } : { value: null, confidence: 'missing' },
+    product: { title: 'Item', sku: null, asin: null, quantity: 1 },
+    reviewReasons: [],
+    reviewed: true,
+    selected: true,
+    source: 'parsed',
+    parserVersion: '2.0.0',
+  };
+}
+
+function makeBatch(labels: Label[]): Batch {
+  return {
+    id: 'b1',
+    ref: 'B-0001',
+    fileName: 'slips.pdf',
+    pageCount: labels.length,
+    importedAt: '2026-01-01T00:00:00.000Z',
+    printedAt: null,
+    operator: 'Tester',
+    labels,
+  };
+}
+
+async function unzip(blob: Blob) {
+  const zip = await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));
+  const documentXml = await zip.file('word/document.xml')!.async('string');
+  const media = Object.entries(zip.files)
+    .filter(([p, f]) => p.startsWith('word/media/') && !f.dir)
+    .map(([p]) => p);
+  // Each A4 page is emitted as its own section, so counting <w:sectPr> counts pages.
+  const pages = (documentXml.match(/<w:sectPr/g) ?? []).length;
+  // Every page renders a full 2×3 grid, so total <w:tc> cells = pages × 6.
+  const cells = (documentXml.match(/<w:tc>/g) ?? []).length;
+  return { documentXml, media, pages, cells };
+}
+
+describe('buildLabelsDocx', () => {
+  it('produces a valid .docx (zip) container', async () => {
+    const blob = await buildLabelsDocx(makeBatch([makeLabel(1, 'Alice', '402-1234567-1234567')]));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    // PK zip signature.
+    expect(bytes[0]).toBe(0x50);
+    expect(bytes[1]).toBe(0x4b);
+  });
+
+  it('puts 1 label on a single A4 page and embeds its QR', async () => {
+    const blob = await buildLabelsDocx(makeBatch([makeLabel(1, 'Alice', '402-1234567-1234567')]));
+    const { documentXml, media, pages, cells } = await unzip(blob);
+    expect(pages).toBe(1);
+    expect(documentXml).toContain('Alice');
+    expect(media.length).toBe(1); // one QR image
+    // 1 label → the first cell filled, the remaining 5 cells left empty.
+    expect(cells).toBe(6);
+  });
+
+  it('fits exactly 6 labels on one page', async () => {
+    const labels = Array.from({ length: 6 }, (_, i) =>
+      makeLabel(i + 1, `Name${i + 1}`, '402-1234567-1234567'),
+    );
+    const { pages } = await unzip(await buildLabelsDocx(makeBatch(labels)));
+    expect(pages).toBe(1);
+  });
+
+  it('spills the 7th label onto a second page', async () => {
+    const labels = Array.from({ length: 7 }, (_, i) =>
+      makeLabel(i + 1, `Name${i + 1}`, '402-1234567-1234567'),
+    );
+    const { pages } = await unzip(await buildLabelsDocx(makeBatch(labels)));
+    expect(pages).toBe(2);
+  });
+
+  it('lays out 10 labels across 2 pages', async () => {
+    const labels = Array.from({ length: 10 }, (_, i) =>
+      makeLabel(i + 1, `Name${i + 1}`, '402-1234567-1234567'),
+    );
+    const { pages } = await unzip(await buildLabelsDocx(makeBatch(labels)));
+    expect(pages).toBe(2);
+  });
+
+  it('keeps a fixed 6-cell grid on every page for larger batches', async () => {
+    // 13 labels → 3 A4 pages, each page a full 2×3 grid = 18 cells total.
+    const labels = Array.from({ length: 13 }, (_, i) => makeLabel(i + 1, `Name${i + 1}`, null));
+    const { pages, cells } = await unzip(await buildLabelsDocx(makeBatch(labels)));
+    expect(pages).toBe(3);
+    expect(cells).toBe(18); // 3 pages × 6 fixed cells
+  });
+
+  it('omits the QR when a label has no order number', async () => {
+    const { media } = await unzip(await buildLabelsDocx(makeBatch([makeLabel(1, 'NoOrder', null)])));
+    expect(media.length).toBe(0);
+  });
+
+  it('orders labels by source page number', async () => {
+    const labels = [makeLabel(3, 'Third', null), makeLabel(1, 'First', null), makeLabel(2, 'Second', null)];
+    const { documentXml } = await unzip(await buildLabelsDocx(makeBatch(labels)));
+    expect(documentXml.indexOf('First')).toBeLessThan(documentXml.indexOf('Second'));
+    expect(documentXml.indexOf('Second')).toBeLessThan(documentXml.indexOf('Third'));
+  });
+});
