@@ -13,7 +13,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-canvas text-ink">
       <header className="sticky top-0 z-30 border-b border-[#e0e0de] bg-surface shadow-[0_1px_6px_rgba(0,0,0,0.05)]">
-        <div className="mx-auto flex h-14 max-w-[900px] items-center px-4">
+        <div className="flex h-14 w-full items-center px-4">
           {/* Brand / logo */}
           <button
             type="button"

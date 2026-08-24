@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Printer, Trash2, Pencil, FileText, Upload, Layers, Plus } from 'lucide-react';
+import { Printer, Trash2, Pencil, FileText, Upload, Layers, Plus, RefreshCw } from 'lucide-react';
 import { useStore } from '../app/store';
 import { Button, Card, EmptyState } from '../components/ui';
 import { ShipLabel } from '../components/ShipLabel';
@@ -84,6 +84,14 @@ export function BatchScreen() {
           <Button variant="secondary" icon={<Upload size={14} />} onClick={() => navigate('import')}>
             New PDF
           </Button>
+          <Button
+            variant="secondary"
+            aria-label="Refresh page"
+            title="Refresh page"
+            icon={<RefreshCw size={14} />}
+            className="w-8 justify-center px-0"
+            onClick={() => window.location.reload()}
+          />
           <Button
             aria-label="Add a blank label"
             title="Add a blank label"

@@ -97,14 +97,14 @@ export function ShipLabel({
             <MissingInline>No address</MissingInline>
           )}
           {place ? <div>{place}</div> : null}
-          <div style={{ fontWeight: 700 }}>
+          <div className="ship-label__country" style={{ fontWeight: 700 }}>
             {country ? country.toUpperCase() : <MissingInline>Country unknown</MissingInline>}
           </div>
         </div>
 
         {label.phone.value ? (
           <div className="ship-label__addr" style={{ fontWeight: 700 }}>
-            {label.phoneIsMobile ? `N° portable : ${label.phone.value}` : label.phone.value}
+            {`N° portable : ${label.phone.value}`}
           </div>
         ) : null}
       </div>

@@ -222,8 +222,8 @@
 }
 
 /* Inside the fixed A4 grid cells the cell draws the border, so the label
-   itself is borderless and fills the whole cell. The block is centred so it
-   reads level in the tall cell instead of being crammed against the top edge.
+   itself is borderless and fills the whole cell. Details begin at the top of
+   the cell and the QR is pinned to the top-right corner.
 
    Type, QR and spacing are sized in container units (cqw) relative to the
    cell width, so the on-screen A4 preview is a faithful miniature of the
@@ -234,7 +234,7 @@
   border-radius: 0;
   height: 100%;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   gap: 3cqw;
   padding: 4% 5%;
   /* Width-based container units. The cell aspect ratio is fixed, so sizing by
@@ -244,7 +244,7 @@
   container-type: inline-size;
 }
 
-/* Recipient details on the left, filling the remaining width, left-aligned.
+/* Recipient details begin at the top-left, filling the remaining width.
    `order` places the body first even though the QR comes first in the DOM. */
 .ship-label--bare .ship-label__body {
   order: 0;
@@ -269,8 +269,8 @@
 .ship-label--bare .ship-label__qr {
   order: 1;
   flex: 0 0 auto;
-  align-self: center;
-  width: 28cqw;
+  align-self: flex-start;
+  width: 18cqw;
   height: auto;
   aspect-ratio: 1 / 1;
 }
@@ -301,6 +301,10 @@
   line-height: 1.45;
   margin-top: 3px;
   word-break: break-word;
+}
+
+.ship-label__country {
+  margin-top: 5px;
 }
 
 .ship-label__rule {

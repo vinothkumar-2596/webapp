@@ -59,11 +59,12 @@ const GRID_RESERVE = 1700;
 const COL_WIDTH = Math.floor(CONTENT_WIDTH / COLS); // fixed cell width
 const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed cell height
 
-// Within each label cell the details sit on the left and the QR on the right.
+// Within each label cell the details begin at the top-left and the smaller QR
+// is anchored in the top-right corner.
 // Word stacks paragraphs top-to-bottom, so a borderless nested 2-column table
 // is the reliable way to place them side by side.
 const OUTER_CELL_PAD = 140; // left/right margin inside each label cell
-const QR_COL_W = 1500; // ~2.6 cm column for the QR on the right
+const QR_COL_W = 1100; // ~1.9 cm column for the QR on the right
 const TEXT_COL_W = COL_WIDTH - OUTER_CELL_PAD * 2 - QR_COL_W;
 
 const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: 'D0D5DD' } as const;
@@ -146,7 +147,7 @@ function labelCell({ label, qr }: Entry): TableCell {
   }
 
   if (label.phone.value) {
-    const phone = label.phoneIsMobile ? `N° portable : ${label.phone.value}` : label.phone.value;
+    const phone = `N° portable : ${label.phone.value}`;
     textParas.push(line(phone, { bold: true }));
   }
 
@@ -154,12 +155,12 @@ function labelCell({ label, qr }: Entry): TableCell {
     ? new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({ type: 'png', data: qr, transformation: { width: 96, height: 96 } }),
+          new ImageRun({ type: 'png', data: qr, transformation: { width: 60, height: 60 } }),
         ],
       })
     : new Paragraph('');
 
-  // Borderless inner table: details left, QR right, both centred vertically.
+  // Borderless inner table: details top-left and QR top-right.
   const inner = new Table({
     layout: TableLayoutType.FIXED,
     columnWidths: [TEXT_COL_W, QR_COL_W],
@@ -170,14 +171,14 @@ function labelCell({ label, qr }: Entry): TableCell {
         children: [
           new TableCell({
             width: { size: TEXT_COL_W, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
+            verticalAlign: VerticalAlign.TOP,
             borders: NO_CELL_BORDERS,
             margins: { top: 0, bottom: 0, left: 0, right: 80 },
             children: textParas,
           }),
           new TableCell({
             width: { size: QR_COL_W, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
+            verticalAlign: VerticalAlign.TOP,
             borders: NO_CELL_BORDERS,
             children: [qrPara],
           }),
@@ -188,7 +189,7 @@ function labelCell({ label, qr }: Entry): TableCell {
 
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
-    verticalAlign: VerticalAlign.CENTER,
+    verticalAlign: VerticalAlign.TOP,
     margins: { top: 60, bottom: 60, left: OUTER_CELL_PAD, right: OUTER_CELL_PAD },
     children: [inner],
   });
