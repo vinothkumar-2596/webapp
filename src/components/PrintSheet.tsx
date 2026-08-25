@@ -23,6 +23,11 @@ import type { Label, TemplateSettings } from '../lib/types';
 const COLS = 2;
 const ROWS = 5;
 const PER_PAGE = COLS * ROWS; // 10
+const AGIPA_119013 = {
+  labelWidthMm: 105,
+  labelHeightMm: 57,
+  verticalMarginMm: 6,
+} as const;
 
 // Physical portrait page size in millimetres per paper choice, so printed
 // cells are identical on every page regardless of label count.
@@ -58,8 +63,7 @@ export function PrintSheet({
   }, []);
 
   // Drive @page from the chosen paper size. Page margins are applied inside
-  // each sheet (as padding) so the 2×3 grid can be sized to exact millimetres,
-  // so @page itself is margin-free.
+  // each sheet, so @page itself is margin-free.
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--page-size', settings.paperSize);
@@ -72,6 +76,7 @@ export function PrintSheet({
   const ordered = [...labels].sort((a, b) => a.pageNumber - b.pageNumber);
   const pages = ordered.length > 0 ? paginate(ordered, PER_PAGE) : [[]];
   const page = PAGE_MM[settings.paperSize];
+  const isAgipa119013 = settings.paperSize === 'A4';
 
   return createPortal(
     <>
@@ -82,10 +87,25 @@ export function PrintSheet({
           style={{
             width: `${page.w}mm`,
             height: `${page.h}mm`,
-            padding: `${settings.marginMm}mm`,
+            // APLI Agipa 119013: 2 × 105 mm fills the A4 width exactly;
+            // 5 × 57 mm leaves 6 mm at the top and bottom.
+            padding: isAgipa119013
+              ? `${AGIPA_119013.verticalMarginMm}mm 0`
+              : `${settings.marginMm}mm`,
           }}
         >
-          <div className="print-grid">
+          <div
+            className="print-grid"
+            style={
+              isAgipa119013
+                ? {
+                    gridTemplateColumns: `repeat(${COLS}, ${AGIPA_119013.labelWidthMm}mm)`,
+                    gridTemplateRows: `repeat(${ROWS}, ${AGIPA_119013.labelHeightMm}mm)`,
+                    gap: 0,
+                  }
+                : undefined
+            }
+          >
             {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
               const label = pageLabels[cellIdx];
               // Fixed empty cell — keeps every sheet a full 2×3 grid even when

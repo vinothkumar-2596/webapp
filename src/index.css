@@ -331,7 +331,7 @@
 
 /* ══════════════════════════════════════════════════════════════════
    Fixed A4 print sheet
-   Every printed page is 2 columns × 3 rows = 6 equal cells. Label size
+   Every printed page is 2 columns × 5 rows = 10 equal cells. Label size
    stays constant regardless of how many labels or pages there are; the
    last sheet's unused cells print blank. Sized in millimetres for
    physically accurate output. Lives in #print-root (display:none on screen).

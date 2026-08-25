@@ -40,34 +40,27 @@ import type { Batch, Label } from '../types';
 // 1 mm ≈ 56.6929 twips, so A4 (210 × 297 mm) is exactly:
 const A4_WIDTH = 11906;
 const A4_HEIGHT = 16838;
-const MARGIN = 567; // ~10 mm top/bottom margin
-const HORIZONTAL_MARGIN = 200; // ~3.5 mm, matching the compact reference sheet
+// APLI Agipa 119013 stock: 2 × 105 mm labels across A4, 5 × 57 mm down.
+// The remaining 12 mm is split into 6 mm at the top and bottom.
+const TOP_MARGIN = 340;
+const BOTTOM_MARGIN = 343;
 
 const COLS = 2;
 const ROWS = 5;
 const PER_PAGE = COLS * ROWS; // 10
 
-const CONTENT_WIDTH = A4_WIDTH - HORIZONTAL_MARGIN * 2;
-const CONTENT_HEIGHT = A4_HEIGHT - MARGIN * 2;
+const CONTENT_WIDTH = A4_WIDTH;
+const COL_WIDTH = Math.floor(A4_WIDTH / COLS); // exactly 105 mm per label
+const ROW_HEIGHT = 3231; // 57 mm per label
 
-// Height held back below the grid. Word adds per-cell margins and always
-// appends a paragraph after a table (the one that carries the section break),
-// so a grid sized to the full content height ends up a hair too tall — the
-// last row spills onto a second physical page and the sheet prints fewer
-// labels than it should. Reserving this slack keeps all rows on one page.
-const GRID_RESERVE = 400;
-
-const COL_WIDTH = Math.floor(CONTENT_WIDTH / COLS); // fixed cell width
-const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed cell height
-
-// Within each label cell the details begin at the top-left and the smaller QR
-// is anchored in the top-right corner.
-// Word stacks paragraphs top-to-bottom, so a borderless nested 2-column table
-// is the reliable way to place them side by side.
-const OUTER_CELL_PAD = 0; // no outer left/right padding inside a label cell
-const LEFT_COLUMN_GUTTER = 140; // small invisible gap after the left label
-const RIGHT_COLUMN_INSET = 220; // matching inset before the right label content
+// Each label is represented by a text column and a QR column in the one outer
+// table. Avoiding nested tables keeps these widths stable in Word for iOS.
 const QR_COL_W = 1100; // ~1.9 cm column for the QR on the right
+const TEXT_COL_W = COL_WIDTH - QR_COL_W;
+const CELL_TOP_PAD = 284; // 5 mm, matching the supplied APLI template
+const CELL_LEFT_PAD = 15; // 0.26 mm
+const CELL_RIGHT_PAD = 284; // 5 mm
+const PARAGRAPH_INSET = 258; // 4.55 mm on both sides
 
 const NONE_BORDER = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } as const;
 const NO_TABLE_BORDERS = {
@@ -127,6 +120,7 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
     // Match Word's "No Spacing" paragraph style: compact consecutive lines
     // with no empty paragraph gap between address fields.
     spacing: { before: 0, after: 0, line: 240 },
+    indent: { left: PARAGRAPH_INSET, right: PARAGRAPH_INSET },
     children: [
       new TextRun({
         text,
@@ -138,12 +132,9 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
   });
 }
 
-/** One filled label cell: recipient details on the left, QR on the right. */
-function labelCell({ label, qr }: Entry, isLeftColumn: boolean): TableCell {
+/** The text half of one label. */
+function textCell({ label }: Entry): TableCell {
   const textParas: Paragraph[] = [];
-  const contentWidth =
-    COL_WIDTH - (isLeftColumn ? LEFT_COLUMN_GUTTER : RIGHT_COLUMN_INSET);
-  const textColWidth = contentWidth - QR_COL_W;
 
   textParas.push(line(label.recipientName.value ?? 'No recipient name'));
 
@@ -159,68 +150,45 @@ function labelCell({ label, qr }: Entry, isLeftColumn: boolean): TableCell {
     textParas.push(line(phone));
   }
 
-  const qrPara = qr
-    ? new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new ImageRun({ type: 'png', data: qr, transformation: { width: 56, height: 56 } }),
-        ],
-      })
-    : new Paragraph('');
-
-  // Borderless inner table: details top-left and QR top-right.
-  const inner = new Table({
-    layout: TableLayoutType.FIXED,
-    columnWidths: [textColWidth, QR_COL_W],
-    width: { size: contentWidth, type: WidthType.DXA },
-    borders: NO_TABLE_BORDERS,
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: textColWidth, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.TOP,
-            borders: NO_CELL_BORDERS,
-            margins: { top: 0, bottom: 0, left: 0, right: 40 },
-            children: textParas,
-          }),
-          new TableCell({
-            width: { size: QR_COL_W, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.TOP,
-            borders: NO_CELL_BORDERS,
-            margins: { top: 0, bottom: 0, left: 0, right: 0 },
-            children: [qrPara],
-          }),
-        ],
-      }),
-    ],
-  });
-
   return new TableCell({
-    width: { size: COL_WIDTH, type: WidthType.DXA },
+    width: { size: TEXT_COL_W, type: WidthType.DXA },
     verticalAlign: VerticalAlign.TOP,
     borders: NO_CELL_BORDERS,
     margins: {
-      top: 40,
-      bottom: 40,
-      left: isLeftColumn ? OUTER_CELL_PAD : RIGHT_COLUMN_INSET,
-      right: isLeftColumn ? LEFT_COLUMN_GUTTER : OUTER_CELL_PAD,
+      top: CELL_TOP_PAD,
+      bottom: 0,
+      left: CELL_LEFT_PAD,
+      right: CELL_RIGHT_PAD,
     },
-    children: [inner],
+    children: textParas,
   });
 }
 
-/** A blank cell — keeps the grid at its fixed size when a page isn't full. */
-function emptyCell(isLeftColumn: boolean): TableCell {
+/** The QR half of one label. */
+function qrCell(qr: Uint8Array | null): TableCell {
   return new TableCell({
-    width: { size: COL_WIDTH, type: WidthType.DXA },
+    width: { size: QR_COL_W, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.TOP,
     borders: NO_CELL_BORDERS,
-    margins: {
-      top: 0,
-      bottom: 0,
-      left: isLeftColumn ? OUTER_CELL_PAD : RIGHT_COLUMN_INSET,
-      right: isLeftColumn ? LEFT_COLUMN_GUTTER : OUTER_CELL_PAD,
-    },
+    margins: { top: CELL_TOP_PAD, bottom: 0, left: 0, right: CELL_RIGHT_PAD },
+    children: [
+      qr
+        ? new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({ type: 'png', data: qr, transformation: { width: 58, height: 58 } }),
+            ],
+          })
+        : new Paragraph(''),
+    ],
+  });
+}
+
+function emptyTextCell(): TableCell {
+  return new TableCell({
+    width: { size: TEXT_COL_W, type: WidthType.DXA },
+    borders: NO_CELL_BORDERS,
+    margins: { top: CELL_TOP_PAD, bottom: 0, left: CELL_LEFT_PAD, right: CELL_RIGHT_PAD },
     children: [new Paragraph('')],
   });
 }
@@ -232,7 +200,7 @@ function pageTable(entries: Entry[]): Table {
     const cells: TableCell[] = [];
     for (let c = 0; c < COLS; c += 1) {
       const entry = entries[r * COLS + c];
-      cells.push(entry ? labelCell(entry, c === 0) : emptyCell(c === 0));
+      cells.push(entry ? textCell(entry) : emptyTextCell(), qrCell(entry?.qr ?? null));
     }
     rows.push(
       new TableRow({ height: { value: ROW_HEIGHT, rule: HeightRule.EXACT }, children: cells }),
@@ -240,7 +208,7 @@ function pageTable(entries: Entry[]): Table {
   }
   return new Table({
     layout: TableLayoutType.FIXED,
-    columnWidths: [COL_WIDTH, COL_WIDTH],
+    columnWidths: [TEXT_COL_W, QR_COL_W, TEXT_COL_W, QR_COL_W],
     width: { size: CONTENT_WIDTH, type: WidthType.DXA },
     borders: NO_TABLE_BORDERS,
     rows,
@@ -277,10 +245,10 @@ export async function buildLabelsDocx(batch: Batch): Promise<Blob> {
         // doesn't reserve its default header/footer band and steal vertical
         // space from the grid (which would push the third row off the page).
         margin: {
-          top: MARGIN,
-          bottom: MARGIN,
-          left: HORIZONTAL_MARGIN,
-          right: HORIZONTAL_MARGIN,
+          top: TOP_MARGIN,
+          bottom: BOTTOM_MARGIN,
+          left: 0,
+          right: 0,
           header: 283,
           footer: 283,
         },

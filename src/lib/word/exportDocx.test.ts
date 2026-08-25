@@ -77,6 +77,17 @@ describe('buildLabelsDocx', () => {
     );
   });
 
+  it('uses the exact APLI Agipa 119013 cell dimensions', async () => {
+    const { documentXml } = await unzip(
+      await buildLabelsDocx(makeBatch([makeLabel(1, 'Alice', '402-1234567-1234567')])),
+    );
+    expect(documentXml).toContain('<w:gridCol w:w="4853"/><w:gridCol w:w="1100"/>');
+    expect(documentXml).toContain('<w:trHeight w:val="3231" w:hRule="exact"/>');
+    expect(documentXml).toContain('w:top="340" w:right="0" w:bottom="343" w:left="0"');
+    expect(documentXml).toContain('<w:top w:type="dxa" w:w="284"/>');
+    expect(documentXml).toContain('<w:ind w:left="258" w:right="258"/>');
+  });
+
   it('fits exactly 10 labels on one page', async () => {
     const labels = Array.from({ length: 10 }, (_, i) =>
       makeLabel(i + 1, `Name${i + 1}`, '402-1234567-1234567'),
