@@ -40,13 +40,14 @@ import type { Batch, Label } from '../types';
 // 1 mm ≈ 56.6929 twips, so A4 (210 × 297 mm) is exactly:
 const A4_WIDTH = 11906;
 const A4_HEIGHT = 16838;
-const MARGIN = 567; // ~10 mm all round
+const MARGIN = 567; // ~10 mm top/bottom margin
+const HORIZONTAL_MARGIN = 200; // ~3.5 mm, matching the compact reference sheet
 
 const COLS = 2;
 const ROWS = 5;
 const PER_PAGE = COLS * ROWS; // 10
 
-const CONTENT_WIDTH = A4_WIDTH - MARGIN * 2;
+const CONTENT_WIDTH = A4_WIDTH - HORIZONTAL_MARGIN * 2;
 const CONTENT_HEIGHT = A4_HEIGHT - MARGIN * 2;
 
 // Height held back below the grid. Word adds per-cell margins and always
@@ -54,7 +55,7 @@ const CONTENT_HEIGHT = A4_HEIGHT - MARGIN * 2;
 // so a grid sized to the full content height ends up a hair too tall — the
 // last row spills onto a second physical page and the sheet prints fewer
 // labels than it should. Reserving this slack keeps all rows on one page.
-const GRID_RESERVE = 1700;
+const GRID_RESERVE = 400;
 
 const COL_WIDTH = Math.floor(CONTENT_WIDTH / COLS); // fixed cell width
 const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed cell height
@@ -63,11 +64,11 @@ const ROW_HEIGHT = Math.floor((CONTENT_HEIGHT - GRID_RESERVE) / ROWS); // fixed 
 // is anchored in the top-right corner.
 // Word stacks paragraphs top-to-bottom, so a borderless nested 2-column table
 // is the reliable way to place them side by side.
-const OUTER_CELL_PAD = 140; // left/right margin inside each label cell
+const OUTER_CELL_PAD = 0; // no outer left/right padding inside a label cell
+const LEFT_COLUMN_GUTTER = 140; // small invisible gap after the left label
+const RIGHT_COLUMN_INSET = 220; // matching inset before the right label content
 const QR_COL_W = 1100; // ~1.9 cm column for the QR on the right
-const TEXT_COL_W = COL_WIDTH - OUTER_CELL_PAD * 2 - QR_COL_W;
 
-const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: 'D0D5DD' } as const;
 const NONE_BORDER = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } as const;
 const NO_TABLE_BORDERS = {
   top: NONE_BORDER,
@@ -100,7 +101,9 @@ function paginate<T>(items: T[], size: number): T[][] {
 /** Render an order number to PNG bytes for embedding in the document. */
 async function renderQr(order: string): Promise<Uint8Array> {
   const dataUrl = await QRCode.toDataURL(order, {
-    margin: 1,
+    // A clear white quiet-zone keeps the printed QR distinct from label text,
+    // matching the reference sheet and improving scan reliability.
+    margin: 3,
     width: 240,
     errorCorrectionLevel: 'M',
   });
@@ -121,41 +124,46 @@ function streetLinesOf(label: Label): string[] {
 
 function line(text: string, opts: { bold?: boolean; size?: number; font?: string } = {}): Paragraph {
   return new Paragraph({
-    spacing: { after: 30 },
+    // Match Word's "No Spacing" paragraph style: compact consecutive lines
+    // with no empty paragraph gap between address fields.
+    spacing: { before: 0, after: 0, line: 240 },
     children: [
       new TextRun({
         text,
-        bold: opts.bold ?? false,
-        size: opts.size ?? 18, // half-points → 9pt default
-        font: opts.font ?? 'Arial',
+        bold: opts.bold ?? true,
+        size: opts.size ?? 24, // half-points → 12pt default
+        font: opts.font ?? 'Calibri',
       }),
     ],
   });
 }
 
 /** One filled label cell: recipient details on the left, QR on the right. */
-function labelCell({ label, qr }: Entry): TableCell {
+function labelCell({ label, qr }: Entry, isLeftColumn: boolean): TableCell {
   const textParas: Paragraph[] = [];
+  const contentWidth =
+    COL_WIDTH - (isLeftColumn ? LEFT_COLUMN_GUTTER : RIGHT_COLUMN_INSET);
+  const textColWidth = contentWidth - QR_COL_W;
 
-  textParas.push(line(label.recipientName.value ?? 'No recipient name', { bold: true, size: 22 }));
+  textParas.push(line(label.recipientName.value ?? 'No recipient name'));
 
   const place = [label.address.postalCode, label.address.city].filter(Boolean).join(' ');
   for (const l of streetLinesOf(label)) textParas.push(line(l));
   if (place) textParas.push(line(place));
   if (label.address.country.value) {
-    textParas.push(line(label.address.country.value.toUpperCase(), { bold: true }));
+    textParas.push(line(label.address.country.value.toUpperCase()));
   }
 
   if (label.phone.value) {
     const phone = `N° portable : ${label.phone.value}`;
-    textParas.push(line(phone, { bold: true }));
+    textParas.push(line(phone));
   }
 
   const qrPara = qr
     ? new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({ type: 'png', data: qr, transformation: { width: 60, height: 60 } }),
+          new ImageRun({ type: 'png', data: qr, transformation: { width: 56, height: 56 } }),
         ],
       })
     : new Paragraph('');
@@ -163,23 +171,24 @@ function labelCell({ label, qr }: Entry): TableCell {
   // Borderless inner table: details top-left and QR top-right.
   const inner = new Table({
     layout: TableLayoutType.FIXED,
-    columnWidths: [TEXT_COL_W, QR_COL_W],
-    width: { size: TEXT_COL_W + QR_COL_W, type: WidthType.DXA },
+    columnWidths: [textColWidth, QR_COL_W],
+    width: { size: contentWidth, type: WidthType.DXA },
     borders: NO_TABLE_BORDERS,
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            width: { size: TEXT_COL_W, type: WidthType.DXA },
+            width: { size: textColWidth, type: WidthType.DXA },
             verticalAlign: VerticalAlign.TOP,
             borders: NO_CELL_BORDERS,
-            margins: { top: 0, bottom: 0, left: 0, right: 80 },
+            margins: { top: 0, bottom: 0, left: 0, right: 40 },
             children: textParas,
           }),
           new TableCell({
             width: { size: QR_COL_W, type: WidthType.DXA },
             verticalAlign: VerticalAlign.TOP,
             borders: NO_CELL_BORDERS,
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
             children: [qrPara],
           }),
         ],
@@ -190,27 +199,40 @@ function labelCell({ label, qr }: Entry): TableCell {
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
     verticalAlign: VerticalAlign.TOP,
-    margins: { top: 60, bottom: 60, left: OUTER_CELL_PAD, right: OUTER_CELL_PAD },
+    borders: NO_CELL_BORDERS,
+    margins: {
+      top: 40,
+      bottom: 40,
+      left: isLeftColumn ? OUTER_CELL_PAD : RIGHT_COLUMN_INSET,
+      right: isLeftColumn ? LEFT_COLUMN_GUTTER : OUTER_CELL_PAD,
+    },
     children: [inner],
   });
 }
 
 /** A blank cell — keeps the grid at its fixed size when a page isn't full. */
-function emptyCell(): TableCell {
+function emptyCell(isLeftColumn: boolean): TableCell {
   return new TableCell({
     width: { size: COL_WIDTH, type: WidthType.DXA },
+    borders: NO_CELL_BORDERS,
+    margins: {
+      top: 0,
+      bottom: 0,
+      left: isLeftColumn ? OUTER_CELL_PAD : RIGHT_COLUMN_INSET,
+      right: isLeftColumn ? LEFT_COLUMN_GUTTER : OUTER_CELL_PAD,
+    },
     children: [new Paragraph('')],
   });
 }
 
-/** The 2 × 3 grid for a single A4 page. */
+/** The borderless 2 × 5 grid for a single A4 page. */
 function pageTable(entries: Entry[]): Table {
   const rows: TableRow[] = [];
   for (let r = 0; r < ROWS; r += 1) {
     const cells: TableCell[] = [];
     for (let c = 0; c < COLS; c += 1) {
       const entry = entries[r * COLS + c];
-      cells.push(entry ? labelCell(entry) : emptyCell());
+      cells.push(entry ? labelCell(entry, c === 0) : emptyCell(c === 0));
     }
     rows.push(
       new TableRow({ height: { value: ROW_HEIGHT, rule: HeightRule.EXACT }, children: cells }),
@@ -220,14 +242,7 @@ function pageTable(entries: Entry[]): Table {
     layout: TableLayoutType.FIXED,
     columnWidths: [COL_WIDTH, COL_WIDTH],
     width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-    borders: {
-      top: CELL_BORDER,
-      bottom: CELL_BORDER,
-      left: CELL_BORDER,
-      right: CELL_BORDER,
-      insideHorizontal: CELL_BORDER,
-      insideVertical: CELL_BORDER,
-    },
+    borders: NO_TABLE_BORDERS,
     rows,
   });
 }
@@ -261,7 +276,14 @@ export async function buildLabelsDocx(batch: Batch): Promise<Blob> {
         // Keep header/footer distances well inside the page margin so Word
         // doesn't reserve its default header/footer band and steal vertical
         // space from the grid (which would push the third row off the page).
-        margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN, header: 283, footer: 283 },
+        margin: {
+          top: MARGIN,
+          bottom: MARGIN,
+          left: HORIZONTAL_MARGIN,
+          right: HORIZONTAL_MARGIN,
+          header: 283,
+          footer: 283,
+        },
       },
     },
     children: [pageTable(page)],

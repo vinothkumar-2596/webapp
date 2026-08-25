@@ -134,25 +134,21 @@ export function BatchScreen() {
               <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-5">
                 A4 page {pageIdx + 1} of {pages.length}
               </div>
-              {/* An A4-proportioned sheet: a fixed 2×5 grid of 10 cells. */}
-              <div className="mx-auto grid aspect-[210/297] w-full max-w-[760px] grid-cols-2 grid-rows-5 gap-[2%] rounded-md border border-line bg-white p-[2%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
+              {/* An A4-proportioned sheet: a fixed, borderless 2×5 grid. */}
+              <div className="mx-auto grid aspect-[210/297] w-full max-w-[760px] grid-cols-2 grid-rows-5 gap-x-[1.5%] rounded-md bg-white p-[2%] shadow-[0_2px_12px_rgba(16,24,40,0.12)]">
                 {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
                   const label = pageLabels[cellIdx];
                   if (!label) {
                     // Fixed empty cell — keeps the 2×5 grid even when a page
                     // isn't full (e.g. 1 label → 9 empty cells).
                     return (
-                      <div
-                        key={cellIdx}
-                        aria-hidden
-                        className="rounded-sm border border-dashed border-line-soft"
-                      />
+                      <div key={cellIdx} aria-hidden />
                     );
                   }
                   return (
                     <div
                       key={label.id}
-                      className="relative overflow-hidden rounded-sm border border-line-print"
+                      className="relative overflow-hidden"
                     >
                       <ShipLabel label={label} bare />
                       <div className="no-print absolute bottom-1.5 right-1.5 flex gap-1">

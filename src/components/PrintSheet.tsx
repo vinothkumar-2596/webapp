@@ -68,7 +68,7 @@ export function PrintSheet({
 
   if (!host) return null;
 
-  // One label per PDF page, in page order; exactly 6 labels per fixed A4 sheet.
+  // One label per PDF page, in page order; exactly 10 labels per fixed A4 sheet.
   const ordered = [...labels].sort((a, b) => a.pageNumber - b.pageNumber);
   const pages = ordered.length > 0 ? paginate(ordered, PER_PAGE) : [[]];
   const page = PAGE_MM[settings.paperSize];
@@ -89,7 +89,7 @@ export function PrintSheet({
             {Array.from({ length: PER_PAGE }).map((_, cellIdx) => {
               const label = pageLabels[cellIdx];
               // Fixed empty cell — keeps every sheet a full 2×3 grid even when
-              // the last page isn't full (e.g. 10 labels → page 2 has 2 blanks).
+              // the last page isn't full (e.g. 11 labels → page 2 has 9 blanks).
               if (!label) {
                 return <div key={cellIdx} aria-hidden className="print-cell print-cell--empty" />;
               }

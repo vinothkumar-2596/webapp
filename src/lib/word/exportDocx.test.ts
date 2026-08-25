@@ -66,6 +66,17 @@ describe('buildLabelsDocx', () => {
     expect(media.length).toBe(1); // one QR image
   });
 
+  it('uses a borderless grid and consistently bold 12pt phone text', async () => {
+    const { documentXml } = await unzip(
+      await buildLabelsDocx(makeBatch([makeLabel(1, 'Alice', '402-1234567-1234567')])),
+    );
+    expect(documentXml).not.toContain('w:val="single"');
+    expect(documentXml).toContain('N° portable : 0612345678');
+    expect(documentXml).toMatch(
+      /<w:rPr><w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Calibri" w:hAnsi="Calibri"\/><w:b\/><w:bCs\/><w:sz w:val="24"\/><w:szCs w:val="24"\/><\/w:rPr><w:t xml:space="preserve">N° portable : 0612345678<\/w:t>/,
+    );
+  });
+
   it('fits exactly 10 labels on one page', async () => {
     const labels = Array.from({ length: 10 }, (_, i) =>
       makeLabel(i + 1, `Name${i + 1}`, '402-1234567-1234567'),

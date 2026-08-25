@@ -127,6 +127,6 @@ export function ShipLabel({
 
 function MissingInline({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ color: '#b42318', fontStyle: 'italic', fontWeight: 400 }}>{children}</span>
+    <span style={{ color: '#b42318', fontStyle: 'italic', fontWeight: 700 }}>{children}</span>
   );
 }
