@@ -4,6 +4,7 @@ import {
   Document,
   HeightRule,
   ImageRun,
+  LineRuleType,
   Packer,
   PageOrientation,
   Paragraph,
@@ -36,31 +37,76 @@ import type { Batch, Label } from '../types';
    Layout only — the on-screen Edit/Delete controls never reach here.
    ═══════════════════════════════════════════════════════════════════ */
 
-// Geometry in twips (twentieths of a point). 1 inch = 1440 twips, and
-// 1 mm ≈ 56.6929 twips, so A4 (210 × 297 mm) is exactly:
-const A4_WIDTH = 11906;
-const A4_HEIGHT = 16838;
-// APLI Agipa 119013 stock: 2 × 105 mm labels across A4, 5 × 57 mm down.
-// The remaining 12 mm is split into 6 mm at the top and bottom.
-const TOP_MARGIN = 340;
-const BOTTOM_MARGIN = 343;
+// Geometry in twips (twentieths of a point). 1 inch = 1440 twips, so
+// 1 mm = 1440 / 25.4 ≈ 56.6929 twips.
+const TWIPS_PER_MM = 1440 / 25.4;
+const mm = (v: number) => Math.round(v * TWIPS_PER_MM);
+// 1 px at 96 dpi = 0.75 pt = 15 twips. `ImageRun.transformation` is in px,
+// so this converts a twip budget into the px figure docx wants.
+const TWIPS_PER_PX = 15;
+
+const A4_WIDTH = 11906; // 210 mm
+const A4_HEIGHT = 16838; // 297 mm
 
 const COLS = 2;
 const ROWS = 5;
 const PER_PAGE = COLS * ROWS; // 10
 
+// APLI Agipa 119013 stock: 2 × 105 mm labels across A4, 5 × 57 mm down.
+// 2 × 105 mm = 210 mm, so the sheet has no side margin at all; 5 × 57 mm =
+// 285 mm leaves 12 mm split 6 mm top / 6 mm bottom.
 const CONTENT_WIDTH = A4_WIDTH;
-const COL_WIDTH = Math.floor(A4_WIDTH / COLS); // exactly 105 mm per label
-const ROW_HEIGHT = 3231; // 57 mm per label
+const COL_WIDTH = Math.floor(A4_WIDTH / COLS); // 5953 — 2 × 5953 = 11906 exactly
+const ROW_HEIGHT = mm(57); // 3231
+const GRID_HEIGHT = ROW_HEIGHT * ROWS; // 16155
+
+const TOP_MARGIN = mm(6); // 340
+
+// The bottom margin is deliberately 0 rather than the 6 mm of blank stock.
+//
+// The 6 mm gap below the last row is produced by the grid geometry itself
+// (TOP_MARGIN + GRID_HEIGHT = 16495, i.e. 343 twips short of the page). Word
+// always emits the section break as a real paragraph *after* the table
+// (`<w:p><w:pPr><w:sectPr/></w:pPr></w:p>`), and that paragraph needs somewhere
+// to live. With a 6 mm bottom margin the text area is exactly GRID_HEIGHT, so
+// the break paragraph does not fit, and Word pushes it — along with whichever
+// table row it can no longer keep with it — onto a fresh page. That is what
+// turned 21 labels into 6 sheets with the grid drifting down a row per page.
+//
+// Leaving the margin at 0 gives that paragraph the 343 twips of slack it needs
+// while the printed rows stay in exactly the same place.
+const BOTTOM_MARGIN = 0;
+// Likewise: any header/footer distance larger than the margin makes Word
+// reserve a band and steal vertical space from the grid.
+const HEADER_DISTANCE = 0;
+const FOOTER_DISTANCE = 0;
 
 // Each label is represented by a text column and a QR column in the one outer
 // table. Avoiding nested tables keeps these widths stable in Word for iOS.
-const QR_COL_W = 1100; // ~1.9 cm column for the QR on the right
-const TEXT_COL_W = COL_WIDTH - QR_COL_W;
 const CELL_TOP_PAD = 284; // 5 mm, matching the supplied APLI template
 const CELL_LEFT_PAD = 15; // 0.26 mm
 const CELL_RIGHT_PAD = 284; // 5 mm
 const PARAGRAPH_INSET = 258; // 4.55 mm on both sides
+
+// The QR column is derived from the QR itself so the image can never be wider
+// than the cell that holds it. An over-wide inline image does not clip: Word
+// bleeds it past the cell edge, which for the right-hand column means over the
+// edge of the paper. The +1 px is slack against Word's own rounding.
+const QR_SIZE_PX = 56; // 840 twips ≈ 14.8 mm printed
+const QR_SIZE = QR_SIZE_PX * TWIPS_PER_PX; // 840
+const QR_COL_W = QR_SIZE + CELL_RIGHT_PAD + TWIPS_PER_PX; // 1139
+const TEXT_COL_W = COL_WIDTH - QR_COL_W; // 4814
+
+// A ~1 pt line. Used for the document default so the section-break paragraph
+// Word inserts after each table costs ~24 twips instead of a full 12 pt line.
+const SPACER_SIZE = 2; // half-points
+
+/**
+ * Twips left on the page below the grid, for the spacer and section-break
+ * paragraphs. Exported so a test can assert the page budget holds: if this ever
+ * goes to zero the grid silently spills onto extra sheets again.
+ */
+export const PAGE_SLACK = A4_HEIGHT - TOP_MARGIN - GRID_HEIGHT - BOTTOM_MARGIN; // 343
 
 const NONE_BORDER = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } as const;
 const NO_TABLE_BORDERS = {
@@ -175,12 +221,34 @@ function qrCell(qr: Uint8Array | null): TableCell {
       qr
         ? new Paragraph({
             alignment: AlignmentType.CENTER,
+            // Spelled out rather than inherited: the document default is a 1 pt
+            // line (see SPACER_SIZE) and an inline image must be free to make
+            // its line box as tall as it needs.
+            spacing: { before: 0, after: 0, line: 240, lineRule: LineRuleType.AUTO },
             children: [
-              new ImageRun({ type: 'png', data: qr, transformation: { width: 58, height: 58 } }),
+              new ImageRun({
+                type: 'png',
+                data: qr,
+                transformation: { width: QR_SIZE_PX, height: QR_SIZE_PX },
+              }),
             ],
           })
         : new Paragraph(''),
     ],
+  });
+}
+
+/**
+ * A ~1 pt paragraph.
+ *
+ * Word requires a paragraph after a table, and will silently add a full-height
+ * one on save if the document does not supply it. Emitting our own keeps the
+ * page budget deterministic.
+ */
+function spacerParagraph(): Paragraph {
+  return new Paragraph({
+    spacing: { before: 0, after: 0, line: SPACER_SIZE * 10, lineRule: LineRuleType.EXACT },
+    children: [new TextRun({ text: '', size: SPACER_SIZE })],
   });
 }
 
@@ -203,7 +271,14 @@ function pageTable(entries: Entry[]): Table {
       cells.push(entry ? textCell(entry) : emptyTextCell(), qrCell(entry?.qr ?? null));
     }
     rows.push(
-      new TableRow({ height: { value: ROW_HEIGHT, rule: HeightRule.EXACT }, children: cells }),
+      new TableRow({
+        height: { value: ROW_HEIGHT, rule: HeightRule.EXACT },
+        // A row that splits across a page break would shift every label below
+        // it. With an exact height overlong content is clipped instead, which
+        // keeps the grid rigid.
+        cantSplit: true,
+        children: cells,
+      }),
     );
   }
   return new Table({
@@ -211,6 +286,11 @@ function pageTable(entries: Entry[]): Table {
     columnWidths: [TEXT_COL_W, QR_COL_W, TEXT_COL_W, QR_COL_W],
     width: { size: CONTENT_WIDTH, type: WidthType.DXA },
     borders: NO_TABLE_BORDERS,
+    // Both stated explicitly. Omitting them lets Word and LibreOffice fall back
+    // to the default table style, whose 108-twip indent and cell margins would
+    // slide the whole grid sideways off the label stock.
+    indent: { size: 0, type: WidthType.DXA },
+    margins: { top: 0, bottom: 0, left: 0, right: 0 },
     rows,
   });
 }
@@ -241,23 +321,37 @@ export async function buildLabelsDocx(batch: Batch): Promise<Blob> {
     properties: {
       page: {
         size: { width: A4_WIDTH, height: A4_HEIGHT, orientation: PageOrientation.PORTRAIT },
-        // Keep header/footer distances well inside the page margin so Word
-        // doesn't reserve its default header/footer band and steal vertical
-        // space from the grid (which would push the third row off the page).
         margin: {
           top: TOP_MARGIN,
           bottom: BOTTOM_MARGIN,
           left: 0,
           right: 0,
-          header: 283,
-          footer: 283,
+          header: HEADER_DISTANCE,
+          footer: FOOTER_DISTANCE,
         },
       },
     },
-    children: [pageTable(page)],
+    children: [pageTable(page), spacerParagraph()],
   }));
 
-  const doc = new Document({ sections });
+  const doc = new Document({
+    // Document defaults, not per-run styling: these apply to the paragraph Word
+    // synthesises to carry each section break. At the default 12 pt that
+    // paragraph is ~280 twips tall and does not fit under the grid; at 1 pt it
+    // costs ~24. Every paragraph we build sets its own size and spacing, so
+    // nothing visible inherits this.
+    styles: {
+      default: {
+        document: {
+          run: { size: SPACER_SIZE, font: 'Calibri' },
+          paragraph: {
+            spacing: { before: 0, after: 0, line: 240, lineRule: LineRuleType.AUTO },
+          },
+        },
+      },
+    },
+    sections,
+  });
   return Packer.toBlob(doc);
 }
 
