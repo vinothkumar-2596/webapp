@@ -88,7 +88,9 @@ describe('buildLabelsDocx', () => {
     expect(documentXml).toContain('<w:gridCol w:w="4814"/><w:gridCol w:w="1139"/>');
     expect(documentXml).toContain('<w:trHeight w:val="3231" w:hRule="exact"/>');
     expect(documentXml).toContain('<w:top w:type="dxa" w:w="284"/>');
-    expect(documentXml).toContain('<w:ind w:left="258" w:right="258"/>');
+    // 4814 text column − 15 left cell pad − 284 right cell pad − 258 left inset
+    // − 3061 (54 mm) of wrapping width.
+    expect(documentXml).toContain('<w:ind w:left="258" w:right="1196"/>');
     // 2 × (4814 + 1139) = 11906 = the full A4 width, since 2 × 105 mm labels
     // leave no side margin on the stock.
     const cols = [...documentXml.matchAll(/<w:gridCol w:w="(\d+)"\/>/g)].map((m) => Number(m[1]));
@@ -127,6 +129,12 @@ describe('buildLabelsDocx', () => {
     expect(documentXml).toContain('<w:tblLayout w:type="fixed"/>');
     // A row that split across a page break would shift every label below it.
     expect(documentXml).toContain('<w:cantSplit/>');
+  });
+
+  it('prints the country as it reads on the slip, not uppercased', async () => {
+    const { documentXml } = await unzip(await buildLabelsDocx(makeBatch([makeLabel(1, 'A', null)])));
+    expect(documentXml).toContain('>France<');
+    expect(documentXml).not.toContain('>FRANCE<');
   });
 
   it('sizes the QR to fit inside its column', async () => {

@@ -86,7 +86,7 @@ const FOOTER_DISTANCE = 0;
 const CELL_TOP_PAD = 284; // 5 mm, matching the supplied APLI template
 const CELL_LEFT_PAD = 15; // 0.26 mm
 const CELL_RIGHT_PAD = 284; // 5 mm
-const PARAGRAPH_INSET = 258; // 4.55 mm on both sides
+const PARAGRAPH_INSET = 258; // 4.55 mm from the left edge of the text column
 
 // The QR column is derived from the QR itself so the image can never be wider
 // than the cell that holds it. An over-wide inline image does not clip: Word
@@ -96,6 +96,21 @@ const QR_SIZE_PX = 56; // 840 twips ≈ 14.8 mm printed
 const QR_SIZE = QR_SIZE_PX * TWIPS_PER_PX; // 840
 const QR_COL_W = QR_SIZE + CELL_RIGHT_PAD + TWIPS_PER_PX; // 1139
 const TEXT_COL_W = COL_WIDTH - QR_COL_W; // 4814
+/** Quiet-zone modules drawn inside the PNG itself. See `renderQr`. */
+const QR_QUIET_MODULES = 3;
+
+// How much of a line of address text Word will fit before wrapping.
+//
+// This is deliberately narrower than the text column. The reference sheet wraps
+// both long names ("ROUGET SABRINA ET" / "MENARD XAVIER") and long place lines
+// ("82231 Šeduva Radviliškio" / "rajonas") that the full column width would have
+// kept on one line. Measured against the reference the wrap point sits between
+// 47 mm (its longest surviving line, "54385 DOMEVRE EN HAYE") and 59 mm (its
+// shortest wrapped line); 54 mm is the midpoint, which leaves the phone line
+// "N° portable : 06…" comfortably on one line.
+const TEXT_WRAP_WIDTH = mm(54); // 3061
+const PARAGRAPH_RIGHT_INSET =
+  TEXT_COL_W - CELL_LEFT_PAD - CELL_RIGHT_PAD - PARAGRAPH_INSET - TEXT_WRAP_WIDTH; // 1196
 
 // A ~1 pt line. Used for the document default so the section-break paragraph
 // Word inserts after each table costs ~24 twips instead of a full 12 pt line.
@@ -140,10 +155,13 @@ function paginate<T>(items: T[], size: number): T[][] {
 /** Render an order number to PNG bytes for embedding in the document. */
 async function renderQr(order: string): Promise<Uint8Array> {
   const dataUrl = await QRCode.toDataURL(order, {
-    // A clear white quiet-zone keeps the printed QR distinct from label text,
-    // matching the reference sheet and improving scan reliability.
-    margin: 3,
-    width: 240,
+    // 3 modules of white quiet zone around the code, matching the reference
+    // sheet. Do not shrink this to make the code fill more of its box: the white
+    // border is what the reference prints, and a scanner needs the clear margin.
+    margin: QR_QUIET_MODULES,
+    // Well above what 15 mm of paper can resolve on any office printer, so the
+    // module edges stay hard instead of being resampled soft.
+    width: 480,
     errorCorrectionLevel: 'M',
   });
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
@@ -166,7 +184,7 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
     // Match Word's "No Spacing" paragraph style: compact consecutive lines
     // with no empty paragraph gap between address fields.
     spacing: { before: 0, after: 0, line: 240 },
-    indent: { left: PARAGRAPH_INSET, right: PARAGRAPH_INSET },
+    indent: { left: PARAGRAPH_INSET, right: PARAGRAPH_RIGHT_INSET },
     children: [
       new TextRun({
         text,
@@ -188,7 +206,9 @@ function textCell({ label }: Entry): TableCell {
   for (const l of streetLinesOf(label)) textParas.push(line(l));
   if (place) textParas.push(line(place));
   if (label.address.country.value) {
-    textParas.push(line(label.address.country.value.toUpperCase()));
+    // Printed as it reads on the packing slip ("France", not "FRANCE"), matching
+    // the reference sheet.
+    textParas.push(line(label.address.country.value));
   }
 
   if (label.phone.value) {

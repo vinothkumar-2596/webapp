@@ -98,7 +98,8 @@ export function ShipLabel({
           )}
           {place ? <div>{place}</div> : null}
           <div className="ship-label__country" style={{ fontWeight: 700 }}>
-            {country ? country.toUpperCase() : <MissingInline>Country unknown</MissingInline>}
+            {/* As it reads on the slip ("France"), matching the Word export. */}
+            {country ?? <MissingInline>Country unknown</MissingInline>}
           </div>
         </div>
 
