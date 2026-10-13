@@ -189,7 +189,7 @@ function line(text: string, opts: { bold?: boolean; size?: number; font?: string
       new TextRun({
         text,
         bold: opts.bold ?? true,
-        size: opts.size ?? 24, // half-points → 12pt default
+        size: opts.size ?? 28, // half-points → 14pt default
         font: opts.font ?? 'Calibri',
       }),
     ],
